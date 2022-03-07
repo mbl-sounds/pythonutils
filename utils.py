@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import array_to_latex as a2l
 
 # import numpy as np
 # import scipy.signal as signal
@@ -28,3 +29,10 @@ def saveFigAndMoveToNotes(fig, name):
         "/Users/matthias/repos/phd_notes/admm/images/" + name + ".png",
     )
     pass
+
+
+def writeMatrix(matrix, name, digits=0):
+    frmt = "{:6.%df}" % (digits)
+    with open(name + ".tex", "w") as text_file:
+        stringu = a2l.to_ltx(matrix, frmt=frmt, arraytype="bmatrix", print_out=False)
+        text_file.write(stringu)
