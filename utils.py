@@ -2,10 +2,21 @@ import sys
 import os
 import shutil
 import array_to_latex as a2l
+from dataclasses import dataclass
 
-# import numpy as np
+# import sparse
+import scipy.sparse as sparse
+
+# import stats
+import scipy.stats as stats
+
+import numpy as np
+
 # import scipy.signal as signal
 # import matplotlib.pyplot as plt
+
+# @dataclass
+# class CondorJob:
 
 
 def savefig(fig, name):
@@ -14,11 +25,7 @@ def savefig(fig, name):
             os.mkdir("plots")
         except OSError as error:
             print(error)
-    fig.savefig(
-        "plots/" + name + ".png",
-        facecolor="white",
-        transparent=False,
-    )
+    fig.savefig("plots/" + name + ".png", facecolor="white", transparent=False, dpi=300)
     pass
 
 
@@ -36,3 +43,11 @@ def writeMatrix(matrix, name, digits=0):
     with open(name + ".tex", "w") as text_file:
         stringu = a2l.to_ltx(matrix, frmt=frmt, arraytype="bmatrix", print_out=False)
         text_file.write(stringu)
+
+
+# %%
+def generateConnectionMatrix(M, density, rng=None):
+    A = sparse.random(M, M, density=density, random_state=rng)
+    A = A.toarray()
+    A[A > 0] = 1
+    return A
