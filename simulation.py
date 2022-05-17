@@ -5,8 +5,10 @@ import numpy as np
 
 @dataclass
 class SimConfig:
+    id: str
     runs: int
     seed: int
+    vars
 
     @classmethod
     def load(cls, filename: str):
@@ -18,8 +20,7 @@ class SimConfig:
 
 @dataclass
 class SimResult:
-    runs: int
-    seed: int
+    cfg: SimConfig
 
     @classmethod
     def load(cls, filename: str):
@@ -32,13 +33,26 @@ class SimResult:
 class Simulation:
     name: str
     cfg: SimConfig
+    result: SimResult
     variables: dict
 
     def __init__(self, name: str, cfg: SimConfig) -> None:
         self.name = name
         self.cfg = cfg
-
+        self.result = SimResult(cfg)
         pass
 
     def runLocal(self) -> SimResult:
-        return SimResult()
+        print("Run locally")
+        return self.result
+
+    def runCondor(self) -> SimResult:
+        try:
+            import htcondor
+        except:
+            print("You're not on a condor submit node, dummy!")
+            return None
+
+        print("Run on cluster")
+
+        return self.result
