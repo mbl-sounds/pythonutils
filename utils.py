@@ -1,22 +1,12 @@
 import sys
 import os
 import shutil
-import array_to_latex as a2l
-from dataclasses import dataclass
-
-# import sparse
-import scipy.sparse as sparse
-
-# import stats
-import scipy.stats as stats
-
 import numpy as np
-
-# import scipy.signal as signal
-# import matplotlib.pyplot as plt
-
-# @dataclass
-# class CondorJob:
+import array_to_latex as a2l
+import scipy.sparse as sparse
+import scipy.stats as stats
+import scipy.signal as signal
+import matplotlib.pyplot as plt
 
 
 def savefig(fig, name):
