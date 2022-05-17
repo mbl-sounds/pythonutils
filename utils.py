@@ -33,11 +33,3 @@ def writeMatrix(matrix, name, digits=0):
     with open(name + ".tex", "w") as text_file:
         stringu = a2l.to_ltx(matrix, frmt=frmt, arraytype="bmatrix", print_out=False)
         text_file.write(stringu)
-
-
-# %%
-def generateConnectionMatrix(M, density, rng=None):
-    A = sparse.random(M, M, density=density, random_state=rng)
-    A = A.toarray()
-    A[A > 0] = 1
-    return A
