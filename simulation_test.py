@@ -63,8 +63,11 @@ schedd.query(
 import simulation
 
 # %%
-cfg = simulation.SimConfig(10, 1234)
-test = simulation.Simulation("test", cfg)
+cfg = simulation.SimConfig("test", 10, 1234)
+test = simulation.Simulation(cfg)
+
+# %%
+test.runLocal()
 
 # %%
 test.runCondor()

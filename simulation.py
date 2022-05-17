@@ -31,13 +31,11 @@ class SimResult:
 
 
 class Simulation:
-    name: str
     cfg: SimConfig
     result: SimResult
     variables: dict
 
-    def __init__(self, name: str, cfg: SimConfig) -> None:
-        self.name = name
+    def __init__(self, cfg: SimConfig) -> None:
         self.cfg = cfg
         self.result = SimResult(cfg)
         pass
