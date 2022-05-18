@@ -1,14 +1,26 @@
 from dataclasses import dataclass
 import json
 import numpy as np
+import pandas as pd
 
 
-@dataclass
 class SimConfig:
     id: str
     runs: int
     seed: int
-    vars
+    variables: dict
+
+    def __init__(self, id, runs, seed, variables) -> None:
+        self.id = id
+        self.runs = runs
+        self.seed = seed
+        assert type(variables) == dict, f"variables must be dictionary"
+        for key, vals in variables.items():
+            assert (
+                type(vals) == list
+            ), f"variable '{key}' is not a list. Make list (e.g., [{vals}])"
+        self.variables = variables
+        pass
 
     @classmethod
     def load(cls, filename: str):
@@ -21,6 +33,14 @@ class SimConfig:
 @dataclass
 class SimResult:
     cfg: SimConfig
+    df: pd.DataFrame
+    done: bool
+
+    def createDF(self) -> None:
+        index = pd.MultiIndex.from_product(
+            [*self.cfg.variables.values(), [*range(self.cfg.runs)]],
+            names=[*self.cfg.variables.keys(), "run"],
+        )
 
     @classmethod
     def load(cls, filename: str):
@@ -33,7 +53,6 @@ class SimResult:
 class Simulation:
     cfg: SimConfig
     result: SimResult
-    variables: dict
 
     def __init__(self, cfg: SimConfig) -> None:
         self.cfg = cfg

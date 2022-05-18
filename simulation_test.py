@@ -73,3 +73,93 @@ test.runLocal()
 test.runCondor()
 
 # %%
+# TEST SCENARIO
+import os
+import numpy as np
+import pandas as pd
+import simulation
+import pickle
+import matplotlib.pyplot as plt
+
+# %%
+cfg = simulation.SimConfig(
+    id="test",
+    runs=100,
+    seed=1234,
+    variables={"algorithm": ["LMS", "ADMM"], "variance": [2, 30], "length": [100]},
+)
+
+# %%
+# Simulation function for testing
+def simulationFunction(a, b, c, run, rng: np.random.RandomState):
+    print(f"run {run} lol")
+    data = rng.normal(loc=b, size=(c,))
+    return data
+
+
+# %%
+index = pd.MultiIndex.from_product(
+    [*cfg.variables.values(), [*range(cfg.runs)]], names=[*cfg.variables.keys(), "run"]
+)
+# %%
+rng = np.random.RandomState()
+rng.seed(1234)
+
+if os.path.isfile(f"{cfg.id}.p"):
+    dl = pickle.load(open(f"{cfg.id}.p", "rb"))
+else:
+    dl = {}
+
+for element in index:
+    id = "-".join(map(str, element))
+    if id in dl:
+        continue
+
+    assert (
+        len(element) == len(cfg.variables) + 1
+    ), f"number of generated arguments not matching!"
+    dl[id] = simulationFunction(*element, rng)
+
+pickle.dump(dl, open(f"{cfg.id}.p", "wb"))
+
+# %%
+rng = np.random.RandomState()
+rng.seed(1234)
+
+tmp_data_path = f"tmpdata/{cfg.id}"
+
+if not os.path.isdir(tmp_data_path):
+    os.mkdir(tmp_data_path)
+proc_id = 0
+for element in index:
+    id = "-".join(map(str, element))
+    if not os.path.isfile(tmp_data_path + f"/{proc_id:010d}.p"):
+        assert (
+            len(element) == len(cfg.variables) + 1
+        ), f"number of generated arguments not matching!"
+        runresult = simulationFunction(*element, rng)
+        pickle.dump(runresult, open(tmp_data_path + f"/{proc_id:010d}.p", "wb"))
+    proc_id += 1
+
+# %%
+files = sorted(
+    file
+    for file in os.listdir(tmp_data_path)
+    if os.path.isfile(os.path.join(tmp_data_path, file))
+)
+dl = []
+for filename in files:
+    print(filename)
+    with open(tmp_data_path + "/" + filename, "rb") as f:
+        dl.append(pickle.load(f))
+df = pd.DataFrame(dl, index=index)
+#%%
+df.groupby(["algorithm", "variance", "length"]).mean()
+# %%
+plt.plot(df.groupby(["algorithm", "variance", "length"]).mean().to_numpy().T)
+plt.show()
+#%%
+df.groupby(["algorithm", "variance", "length"]).var()
+
+# %%
+result = simulation.SimResult(cfg)
