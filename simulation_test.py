@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # %%
 cfg = simulation.SimConfig(
     id="test",
-    runs=5,
+    runs=1,
     seed=1234,
     variables={"algorithm": ["LMS", "ADMM"], "variance": [2, 30], "length": [100]},
 )
@@ -59,7 +59,7 @@ python_job = htcondor.Submit(
         "initialdir": ".",
         "notification": "Error",
         "executable": "/users/sista/mblochbe/python_venvs/admmstuff/bin/python",
-        "arguments": f"sim_execute.py $(ProcId) $(tmppath) $(func) \\'$(args)\\' $(seed)",  # sleep for 10 seconds
+        "arguments": f"sim_execute.py $(ProcId) $(tmppath) $(func) $(args) $(seed)",  # sleep for 10 seconds
         "output": f"{cfg.id}-$(ProcId).out",  # output and error for each job, using the $(ProcId) macro
         "error": f"{cfg.id}-$(ProcId).err",
         "log": f"{cfg.id}.log",  # we still send all of the HTCondor logs for every job to the same file (not split up!)
@@ -83,7 +83,9 @@ itemdata = [
     {
         "tmppath": "tmpdata/test",
         "func": "func.p",
-        "args": json.dumps(json.dumps(element))[1:-1],
+        "args": json.dumps(json.dumps(element, indent=None, separators=(",", ":")))[
+            1:-1
+        ],
         "seed": str(seed),
     }
     for element in index
