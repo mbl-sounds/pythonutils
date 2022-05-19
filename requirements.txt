@@ -1,0 +1,5 @@
+numpy==1.22.0
+scipy==1.7.3
+pandas==1.4.1
+matplotlib==3.5.1
+htcondor==9.8.1
