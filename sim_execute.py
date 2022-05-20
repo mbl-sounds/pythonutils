@@ -1,13 +1,22 @@
+# %%
+import os
 import sys
-import pickle
 import json
+import pickle
+import importlib.util
 
-proc_id = int(sys.argv[1])
-tmppath = sys.argv[2]
-func = sys.argv[3]
-args = json.loads(sys.argv[4])
-seed = int(sys.argv[5])
-# print(f"{proc_id}, {tmppath}, {args}, {seed}")
-sim_func = pickle.load(open(func, "rb"))
-runresult = sim_func(*args)
+
+#%%
+proc_id: int = int(sys.argv[1])
+tmppath: str = sys.argv[2]
+func_data = json.loads(sys.argv[3])
+
+sys.path.append(os.path.dirname(func_data["simpath"]))
+spec = importlib.util.spec_from_file_location("funcmod", func_data["simpath"])
+funcmod = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = funcmod
+spec.loader.exec_module(funcmod)
+simfunc = getattr(funcmod, func_data["simfunc"])
+
+runresult = simfunc(*func_data["args"])
 pickle.dump(runresult, open(tmppath + f"/{proc_id:010d}.p", "wb"))
