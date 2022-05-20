@@ -135,7 +135,7 @@ class Simulation:
 
         return
 
-    def runCondor(self, user_submit: dict):
+    def runCondor(self, user_submit_data: dict):
         try:
             import htcondor
         except:
@@ -148,7 +148,7 @@ class Simulation:
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
-        submit = {
+        submit_data = {
             "universe": "Vanilla",
             "request_walltime": "100",
             "nice_user": "true",
@@ -162,10 +162,10 @@ class Simulation:
             "request_cpus": "1",
             "request_memory": "128MB",
         }
-        submit.update(user_submit)
-        print(submit)
+        submit_data.update(user_submit_data)
 
-        submit = htcondor.Submit(submit)
+        submit = htcondor.Submit(submit_data)
+        print(submit)
         itemdata = [
             {
                 "tmppath_data": self.tmppath_data,
@@ -199,6 +199,12 @@ class Simulation:
             projection=["ClusterId", "ProcId"],
         )
         return len(data) == 0
+
+    def getJobStates(self, proj=["ClusterId", "ProcId", "JobStatus"]):
+        return self.schedd.query(
+            constraint=f"ClusterId == {self.cluster}",
+            projection=proj,
+        )
 
     def getResult(self) -> SimResult:
         assert os.path.isdir(
