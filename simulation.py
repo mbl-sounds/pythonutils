@@ -2,17 +2,10 @@ import os
 import json
 import pickle
 import shutil
-from typing import Callable
-import numpy as np
 import pandas as pd
-from enum import Enum
+from typing import Callable
 import multiprocessing as mp
 from dataclasses import dataclass
-
-
-class ResultType(Enum):
-    LOCAL = 1
-    CONDOR = 2
 
 
 class SimConfig(dict):
@@ -44,7 +37,6 @@ class SimConfig(dict):
 
 @dataclass
 class SimResult:
-    # type: ResultType
     cfg: SimConfig
     df: pd.DataFrame
     done: bool
@@ -200,7 +192,7 @@ class Simulation:
         )
         return len(data) == 0
 
-    def getJobStates(self, proj=["ClusterId", "ProcId", "JobStatus"]):
+    def getJobStatus(self, proj=["ClusterId", "ProcId", "JobStatus"]):
         return self.schedd.query(
             constraint=f"ClusterId == {self.cluster}",
             projection=proj,
@@ -215,7 +207,10 @@ class Simulation:
             for file in os.listdir(self.tmppath_data)
             if os.path.isfile(os.path.join(self.tmppath_data, file))
         )
-        print(f"Found {len(files)} data files. Creating dataframe.")
+        print(f"Found {len(files)} data files.")
+        assert len(files) == len(
+            self.index
+        ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
         dl = []
         for filename in files:
             with open(self.tmppath_data + "/" + filename, "rb") as f:
