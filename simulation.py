@@ -6,6 +6,9 @@ import pandas as pd
 from typing import Callable
 import multiprocessing as mp
 from dataclasses import dataclass
+import ipywidgets as widgets
+from IPython.display import display
+import time
 
 
 class SimConfig:
@@ -98,21 +101,27 @@ class Simulation:
             pass
         pass
 
-    def _workerProc(self, q: mp.Queue):
+    def _workerProc(self, q: mp.Queue, qp: mp.Queue):
         while True:
             data = q.get()
             if data == "DONE":
+                qp.put("DONE")
                 break
             task_id = data["task_id"]
             runresult = self.simfunc_local(*data["args"], data["seed"])
             pickle.dump(runresult, open(self.tmppath_data + f"/{task_id:010d}.p", "wb"))
+            qp.put(1)
 
     def runLocal(self, nprocesses=1):
         print(f"Run locally in {nprocesses} processes")
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
+        self.tasks_done = 0
+        lock = mp.Lock()
+
         q = mp.Queue()
+        qp = mp.Queue()
 
         task_id = 0
         for element in self.index:
@@ -129,14 +138,33 @@ class Simulation:
             q.put("DONE")  # tells proesses to quit
             p = mp.Process(
                 target=self._workerProc,
-                args=(q,),
+                args=(q, qp),
             )
             p.daemon = True
             p.start()  # Launch p() as another proc
             processes.append(p)
 
+        layout = widgets.Layout(width="auto", height="30px")  # set width and height
+        f = widgets.IntProgress(
+            min=0,
+            max=len(self.index),
+            layout=layout,
+        )  # instantiate the bar
+        display(f)  # display the bar
+        all_done = 0
+        while True:
+            time.sleep(0.5)
+            data = qp.get()
+            if data == "DONE":
+                all_done += 1
+            else:
+                f.value += data
+            if all_done >= nprocesses:
+                break
+
         for p in processes:
             p.join()
+        f.value = len(self.index)
 
         return
 

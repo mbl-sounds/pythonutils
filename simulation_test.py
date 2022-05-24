@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 
 # %%
 # Simulation function for testing
-def simulationFunction(a, b, c, run: int, seed: int):
+def simulationFunction(algorithm, variance, length, run: int, seed: int):
     import numpy as np
 
     rng = np.random.default_rng(np.random.PCG64DXSM(seed).jumped(run))
-    print(f"run {run} with algorithm={a}, variance={b}, length={c}")
-    data = rng.normal(loc=b, size=(c,))
+    # print(f"run {run} with algorithm={algorithm}, variance={variance}, length={length}")
+    data = rng.normal(loc=variance, size=(length,))
     return data
 
 
@@ -63,5 +63,3 @@ if __name__ == "__main__":
     # %%
     plt.plot(result.df.groupby(["algorithm", "variance", "length"]).mean().to_numpy().T)
     plt.show()
-
-# %%
