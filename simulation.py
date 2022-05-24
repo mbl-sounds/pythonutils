@@ -40,9 +40,7 @@ class SimConfig:
 
     def save(self, filename: str):
         with open(filename + ".json", "w") as f:
-            json.dump(
-                self, fp=f, default=lambda o: o.__dict__, sort_keys=True, indent=4
-            )
+            json.dump(self, fp=f, default=lambda o: o.__dict__, indent=4)
         pass
 
 
@@ -187,6 +185,8 @@ class Simulation:
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
+        execute_path = os.path.dirname(os.path.realpath(__file__)) + "/sim_execute.py"
+
         submit_data = {
             "universe": "Vanilla",
             "request_walltime": "100",
@@ -194,7 +194,7 @@ class Simulation:
             "initialdir": ".",
             "notification": "Error",
             "executable": "/users/sista/mblochbe/python_venvs/admmstuff/bin/python",
-            "arguments": f"sim_execute.py $(ProcId) $(task_id) $(tmppath_data) $(func_data)",  # sleep for 10 seconds
+            "arguments": f"{execute_path} $(ProcId) $(task_id) $(tmppath_data) $(func_data)",  # sleep for 10 seconds
             "output": f"{self.tmppath_out}/{self.cfg.id}.out",  # output and error for each job, using the $(ProcId) macro
             "error": f"{self.tmppath_out}/{self.cfg.id}.err",
             "log": f"{self.tmppath_out}/{self.cfg.id}.log",  # we still send all of the HTCondor logs for every job to the same file (not split up!)
@@ -275,7 +275,7 @@ class Simulation:
                 data = pickle.load(f)
                 dl[tuple(data["args"])] = data["data"]
         df = pd.DataFrame(dl).T
-        df.index.set_names([*self.cfg.variables.keys(), "run"], inplace=True)
+        df.index.set_names(self.index.names, inplace=True)
         result = SimResult(self.cfg, df, True)
         return result
 

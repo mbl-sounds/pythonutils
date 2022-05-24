@@ -3,9 +3,6 @@ import os
 import shutil
 import numpy as np
 import array_to_latex as a2l
-import scipy.sparse as sparse
-import scipy.stats as stats
-import scipy.signal as signal
 import matplotlib.pyplot as plt
 
 
