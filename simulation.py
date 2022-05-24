@@ -115,11 +115,11 @@ class Simulation:
         os.makedirs(self.tmppath_out, exist_ok=True)
 
         q = mp.Queue()
+        qp = mp.Queue()
         if showprogress:
             import ipywidgets as widgets
             from IPython.display import display
             import time
-            qp = mp.Queue()
 
         task_id = 0
         for element in self.index:
