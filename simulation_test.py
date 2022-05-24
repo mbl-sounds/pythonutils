@@ -31,7 +31,7 @@ if __name__ == "__main__":
     sim.clearTmpData()
 
     # %%
-    sim.runLocal(nprocesses=4)
+    sim.runLocal(nprocesses=4, showprogress=True)
 
     # %%
     result = sim.getResult()
