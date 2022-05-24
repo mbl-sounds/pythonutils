@@ -9,21 +9,27 @@ import scipy.signal as signal
 import matplotlib.pyplot as plt
 
 
-def savefig(fig, name):
+def savefig(fig, name, format="png"):
     if not os.path.isdir("plots"):
         try:
             os.mkdir("plots")
         except OSError as error:
             print(error)
-    fig.savefig("plots/" + name + ".png", facecolor="white", transparent=False, dpi=300)
+    fig.savefig(
+        "plots/" + name + f".{format}",
+        facecolor="white",
+        transparent=False,
+        dpi=600,
+        format=format,
+    )
     pass
 
 
-def saveFigAndMoveToNotes(fig, name):
-    savefig(fig, name)
+def saveFigAndMoveToNotes(fig, name, format="png"):
+    savefig(fig, name, format)
     shutil.copy(
-        "plots/" + name + ".png",
-        "/Users/matthias/repos/phd_notes/admm/images/" + name + ".png",
+        "plots/" + name + f".{format}",
+        "/Users/matthias/repos/phd_notes/admm/images/" + name + f".{format}",
     )
     pass
 
