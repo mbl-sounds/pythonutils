@@ -236,13 +236,20 @@ class Simulation:
                 submitted_tasks += 1
         print(f"Run {submitted_tasks} (of {len(self.index)}) on cluster")
 
-        self.schedd = htcondor.Schedd()
         submit_result = self.schedd.submit(submit, itemdata=iter(itemdata))
         self.cluster = submit_result.cluster()
         print(f"Submitted {len(itemdata)} job(s) in cluster {submit_result.cluster()}.")
         return
 
     def isDone(self) -> bool:
+        try:
+            import htcondor
+        except:
+            print(
+                "You're not on a condor submit node or `htcondor` module is not available, dummy!"
+            )
+            return None
+        self.schedd = htcondor.Schedd()
         assert type(self.schedd) != None, "No condor jobs run yet :("
         data = self.schedd.query(
             constraint=f"ClusterId == {self.cluster}",
@@ -251,6 +258,14 @@ class Simulation:
         return len(data) == 0
 
     def getJobStatus(self, proj=["ClusterId", "ProcId", "JobStatus"]):
+        try:
+            import htcondor
+        except:
+            print(
+                "You're not on a condor submit node or `htcondor` module is not available, dummy!"
+            )
+            return None
+        self.schedd = htcondor.Schedd()
         return self.schedd.query(
             constraint=f"ClusterId == {self.cluster}",
             projection=proj,
