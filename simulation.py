@@ -105,12 +105,15 @@ class Simulation:
                 qp.put("DONE")
                 break
             task_id = data["task_id"]
-            runresult = self.simfunc_local(*data["args"], data["seed"])
-            pickle.dump(runresult, open(self.tmppath_data + f"/{task_id:010d}.p", "wb"))
+            runresult = {
+                "data": self.simfunc_local(*data["args"], data["seed"]),
+                "args": data["args"],
+            }
+            pickle.dump(runresult, open(self.tmppath_data + f"/{task_id}.p", "wb"))
             qp.put(1)
 
     def runLocal(self, nprocesses=1, showprogress=False):
-        print(f"Run {len(self.index)} tasks locally in {nprocesses} processes")
+        # self.clearTmpData()
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
@@ -121,17 +124,21 @@ class Simulation:
             from IPython.display import display
             import time
 
-        task_id = 0
+        # task_id = 0
         submitted_tasks = 0
         for element in self.index:
-            if not os.path.isfile(self.tmppath_data + f"/{task_id:010d}.p"):
+            task_id = "-".join([str(el) for el in element])
+            if not os.path.isfile(self.tmppath_data + f"/{task_id}.p"):
                 assert (
                     len(element) == len(self.cfg.variables) + 1
                 ), f"number of generated arguments not matching!"
                 arg = {"task_id": task_id, "args": element, "seed": self.cfg.seed}
                 q.put(arg)
                 submitted_tasks += 1
-            task_id += 1
+            # task_id += 1
+        print(
+            f"Run {submitted_tasks} (of {len(self.index)}) tasks locally in {nprocesses} processes"
+        )
 
         processes = list()
         for i in range(nprocesses):
@@ -177,8 +184,6 @@ class Simulation:
                 "You're not on a condor submit node or `htcondor` module is not available, dummy!"
             )
             return None
-
-        print("Run on HTcondor cluster")
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
@@ -189,7 +194,7 @@ class Simulation:
             "initialdir": ".",
             "notification": "Error",
             "executable": "/users/sista/mblochbe/python_venvs/admmstuff/bin/python",
-            "arguments": f"sim_execute.py $(ProcId) $(tmppath_data) $(func_data)",  # sleep for 10 seconds
+            "arguments": f"sim_execute.py $(ProcId) $(task_id) $(tmppath_data) $(func_data)",  # sleep for 10 seconds
             "output": f"{self.tmppath_out}/{self.cfg.id}.out",  # output and error for each job, using the $(ProcId) macro
             "error": f"{self.tmppath_out}/{self.cfg.id}.err",
             "log": f"{self.tmppath_out}/{self.cfg.id}.log",  # we still send all of the HTCondor logs for every job to the same file (not split up!)
@@ -200,25 +205,34 @@ class Simulation:
 
         submit = htcondor.Submit(submit_data)
         print(submit)
-        itemdata = [
-            {
-                "tmppath_data": self.tmppath_data,
-                "func_data": "{"
-                + json.dumps(
-                    json.dumps(
-                        {
-                            "simpath": self.simpath,
-                            "simfunc": self.simfunc,
-                            "args": (*element, self.cfg.seed),
-                        },
-                        indent=None,
-                        separators=(",", ":"),
-                    )
-                )[2:-2]
-                + "}",
-            }
-            for element in self.index
-        ]
+        submitted_tasks = 0
+        itemdata = []
+        for element in self.index:
+            task_id = "-".join([str(el) for el in element])
+            if not os.path.isfile(self.tmppath_data + f"/{task_id}.p"):
+                assert (
+                    len(element) == len(self.cfg.variables) + 1
+                ), f"number of generated arguments not matching!"
+                {
+                    "tmppath_data": self.tmppath_data,
+                    "task_id": task_id,
+                    "func_data": "{"
+                    + json.dumps(
+                        json.dumps(
+                            {
+                                "simpath": self.simpath,
+                                "simfunc": self.simfunc,
+                                "args": element,
+                                "seed": self.cfg.seed,
+                            },
+                            indent=None,
+                            separators=(",", ":"),
+                        )
+                    )[2:-2]
+                    + "}",
+                }
+                submitted_tasks += 1
+        print(f"Run {submitted_tasks} (of {len(self.index)}) on cluster")
 
         self.schedd = htcondor.Schedd()
         submit_result = self.schedd.submit(submit, itemdata=iter(itemdata))
@@ -253,11 +267,13 @@ class Simulation:
         assert len(files) == len(
             self.index
         ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
-        dl = []
+        dl = {}
         for filename in files:
             with open(self.tmppath_data + "/" + filename, "rb") as f:
-                dl.append(pickle.load(f))
-        df = pd.DataFrame(dl, index=self.index)
+                data = pickle.load(f)
+                dl[tuple(data["args"])] = data["data"]
+        df = pd.DataFrame(dl).T
+        df.index.set_names([*self.cfg.variables.keys(), "run"], inplace=True)
         result = SimResult(self.cfg, df, True)
         return result
 

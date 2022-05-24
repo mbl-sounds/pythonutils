@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 
 # %%
 # Simulation function for testing
-def simulationFunction(algorithm, variance, length, run: int, seed: int):
+def simulationFunction(algorithm, mean, length, run: int, seed: int):
     import numpy as np
 
     rng = np.random.default_rng(np.random.PCG64DXSM(seed).jumped(run))
-    # print(f"run {run} with algorithm={algorithm}, variance={variance}, length={length}")
-    data = rng.normal(loc=variance, size=(length,))
+    # print(f"run {run} with algorithm={algorithm}, mean={mean}, length={length}")
+    data = rng.normal(loc=mean, size=(length,))
     return data
 
 
@@ -19,9 +19,9 @@ def simulationFunction(algorithm, variance, length, run: int, seed: int):
 if __name__ == "__main__":
     cfg = simulation.SimConfig(
         id="test",
-        runs=10,
+        runs=5,
         seed=1234,
-        variables={"algorithm": ["LMS", "ADMM"], "variance": [2, 30], "length": [100]},
+        variables={"algorithm": ["LMS", "ADMM"], "mean": [2, 30], "length": [100]},
     )
 
     # %%
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     result = sim.getResult()
 
     # %%
-    plt.plot(result.df.groupby(["algorithm", "variance", "length"]).mean().to_numpy().T)
+    plt.plot(result.df.groupby(["algorithm", "mean", "length"]).mean().to_numpy().T)
     plt.show()
 
     # %%
@@ -61,5 +61,5 @@ if __name__ == "__main__":
     result = sim.getResult()
 
     # %%
-    plt.plot(result.df.groupby(["algorithm", "variance", "length"]).mean().to_numpy().T)
+    plt.plot(result.df.groupby(["algorithm", "mean", "length"]).mean().to_numpy().T)
     plt.show()
