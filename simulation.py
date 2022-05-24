@@ -122,6 +122,7 @@ class Simulation:
             import time
 
         task_id = 0
+        submitted_tasks = 0
         for element in self.index:
             if not os.path.isfile(self.tmppath_data + f"/{task_id:010d}.p"):
                 assert (
@@ -129,6 +130,7 @@ class Simulation:
                 ), f"number of generated arguments not matching!"
                 arg = {"task_id": task_id, "args": element, "seed": self.cfg.seed}
                 q.put(arg)
+                submitted_tasks += 1
             task_id += 1
 
         processes = list()
@@ -146,7 +148,7 @@ class Simulation:
             layout = widgets.Layout(width="auto", height="30px")  # set width and height
             f = widgets.IntProgress(
                 min=0,
-                max=len(self.index),
+                max=submitted_tasks,
                 layout=layout,
             )  # instantiate the bar
             display(f)  # display the bar
