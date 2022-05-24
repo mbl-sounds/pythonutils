@@ -213,24 +213,26 @@ class Simulation:
                 assert (
                     len(element) == len(self.cfg.variables) + 1
                 ), f"number of generated arguments not matching!"
-                {
-                    "tmppath_data": self.tmppath_data,
-                    "task_id": task_id,
-                    "func_data": "{"
-                    + json.dumps(
-                        json.dumps(
-                            {
-                                "simpath": self.simpath,
-                                "simfunc": self.simfunc,
-                                "args": element,
-                                "seed": self.cfg.seed,
-                            },
-                            indent=None,
-                            separators=(",", ":"),
-                        )
-                    )[2:-2]
-                    + "}",
-                }
+                itemdata.append(
+                    {
+                        "tmppath_data": self.tmppath_data,
+                        "task_id": task_id,
+                        "func_data": "{"
+                        + json.dumps(
+                            json.dumps(
+                                {
+                                    "simpath": self.simpath,
+                                    "simfunc": self.simfunc,
+                                    "args": element,
+                                    "seed": self.cfg.seed,
+                                },
+                                indent=None,
+                                separators=(",", ":"),
+                            )
+                        )[2:-2]
+                        + "}",
+                    }
+                )
                 submitted_tasks += 1
         print(f"Run {submitted_tasks} (of {len(self.index)}) on cluster")
 

@@ -19,7 +19,7 @@ def simulationFunction(algorithm, mean, length, run: int, seed: int):
 if __name__ == "__main__":
     cfg = simulation.SimConfig(
         id="test",
-        runs=5,
+        runs=12,
         seed=1234,
         variables={"algorithm": ["LMS", "ADMM"], "mean": [2, 30], "length": [100]},
     )
@@ -63,3 +63,5 @@ if __name__ == "__main__":
     # %%
     plt.plot(result.df.groupby(["algorithm", "mean", "length"]).mean().to_numpy().T)
     plt.show()
+
+# %%
