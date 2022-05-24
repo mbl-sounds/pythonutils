@@ -110,7 +110,7 @@ class Simulation:
             qp.put(1)
 
     def runLocal(self, nprocesses=1, showprogress=False):
-        print(f"Run locally in {nprocesses} processes")
+        print(f"Run {len(self.index)} tasks locally in {nprocesses} processes")
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
