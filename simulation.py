@@ -6,9 +6,6 @@ import pandas as pd
 from typing import Callable
 import multiprocessing as mp
 from dataclasses import dataclass
-import ipywidgets as widgets
-from IPython.display import display
-import time
 
 
 class SimConfig:
@@ -112,16 +109,17 @@ class Simulation:
             pickle.dump(runresult, open(self.tmppath_data + f"/{task_id:010d}.p", "wb"))
             qp.put(1)
 
-    def runLocal(self, nprocesses=1):
+    def runLocal(self, nprocesses=1, showprogress=False):
         print(f"Run locally in {nprocesses} processes")
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
-        self.tasks_done = 0
-        lock = mp.Lock()
-
         q = mp.Queue()
-        qp = mp.Queue()
+        if showprogress:
+            import ipywidgets as widgets
+            from IPython.display import display
+            import time
+            qp = mp.Queue()
 
         task_id = 0
         for element in self.index:
@@ -144,27 +142,28 @@ class Simulation:
             p.start()  # Launch p() as another proc
             processes.append(p)
 
-        layout = widgets.Layout(width="auto", height="30px")  # set width and height
-        f = widgets.IntProgress(
-            min=0,
-            max=len(self.index),
-            layout=layout,
-        )  # instantiate the bar
-        display(f)  # display the bar
-        all_done = 0
-        while True:
-            time.sleep(0.5)
-            data = qp.get()
-            if data == "DONE":
-                all_done += 1
-            else:
-                f.value += data
-            if all_done >= nprocesses:
-                break
+        if showprogress:
+            layout = widgets.Layout(width="auto", height="30px")  # set width and height
+            f = widgets.IntProgress(
+                min=0,
+                max=len(self.index),
+                layout=layout,
+            )  # instantiate the bar
+            display(f)  # display the bar
+            all_done = 0
+            while True:
+                time.sleep(0.5)
+                data = qp.get()
+                if data == "DONE":
+                    all_done += 1
+                else:
+                    f.value += data
+                if all_done >= nprocesses:
+                    break
+            f.value = len(self.index)
 
         for p in processes:
             p.join()
-        f.value = len(self.index)
 
         return
 
