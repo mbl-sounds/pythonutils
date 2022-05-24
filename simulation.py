@@ -8,14 +8,13 @@ import multiprocessing as mp
 from dataclasses import dataclass
 
 
-class SimConfig(dict):
+class SimConfig:
     id: str
     runs: int
     seed: int
     variables: dict
 
     def __init__(self, id: str, runs: int, seed: int, variables: dict) -> None:
-        dict.__init__(self)
         self.id = id
         self.runs = runs
         self.seed = seed
@@ -29,9 +28,21 @@ class SimConfig(dict):
 
     @classmethod
     def load(cls, filename: str):
+        with open(filename + ".json", "r") as f:
+            data = json.load(fp=f)
+            return cls(
+                id=data["id"],
+                runs=data["runs"],
+                seed=data["seed"],
+                variables=data["variables"],
+            )
         pass
 
     def save(self, filename: str):
+        with open(filename + ".json", "w") as f:
+            json.dump(
+                self, fp=f, default=lambda o: o.__dict__, sort_keys=True, indent=4
+            )
         pass
 
 
@@ -40,12 +51,6 @@ class SimResult:
     cfg: SimConfig
     df: pd.DataFrame
     done: bool
-
-    def createDF(self) -> None:
-        index = pd.MultiIndex.from_product(
-            [*self.cfg.variables.values(), [*range(self.cfg.runs)]],
-            names=[*self.cfg.variables.keys(), "run"],
-        )
 
     @classmethod
     def load(cls, filename: str):
@@ -66,8 +71,13 @@ class Simulation:
     cluster: int
 
     def __init__(self, cfg: SimConfig, simpath: str, simfunc: Callable) -> None:
-        self.cfg = cfg
+        assert set(
+            simfunc.__code__.co_varnames[: simfunc.__code__.co_argcount - 2]
+        ) == set(
+            cfg.variables.keys()
+        ), f"Set of function arguments simulate{simfunc.__code__.co_varnames[:simfunc.__code__.co_argcount-2]} does not match variables in SimConfig {list(cfg.variables.keys())}!"
 
+        self.cfg = cfg
         self.simpath = simpath
         self.simfunc_local = simfunc
         self.simfunc = simfunc.__name__
@@ -82,6 +92,10 @@ class Simulation:
             [*self.cfg.variables.values(), [*range(self.cfg.runs)]],
             names=[*self.cfg.variables.keys(), "run"],
         )
+        try:
+            mp.set_start_method("spawn")
+        except RuntimeError:
+            pass
         pass
 
     def _workerProc(self, q: mp.Queue):
@@ -98,7 +112,6 @@ class Simulation:
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
-        mp.set_start_method("spawn")
         q = mp.Queue()
 
         task_id = 0
