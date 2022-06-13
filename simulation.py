@@ -167,7 +167,7 @@ class Simulation:
                     f.value += data
                 if all_done >= nprocesses:
                     break
-            f.value = len(self.index)
+            f.value = submitted_tasks
 
         for p in processes:
             p.join()
