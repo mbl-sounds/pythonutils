@@ -21,7 +21,10 @@ if __name__ == "__main__":
         id="test",
         runs=12,
         seed=1234,
-        variables={"algorithm": ["LMS", "ADMM"], "mean": [2, 30], "length": [100]},
+        variables=[
+            {"algorithm": ["ADMM"], "mean": [2], "length": [100]},
+            {"algorithm": ["LMS"], "mean": [2, 30]},
+        ],
     )
 
     # %%

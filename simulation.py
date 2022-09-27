@@ -13,17 +13,26 @@ class SimConfig:
     runs: int
     seed: int
     variables: dict
+    cluster: int
 
     def __init__(self, id: str, runs: int, seed: int, variables: dict) -> None:
         self.id = id
         self.runs = runs
         self.seed = seed
-        assert type(variables) == dict, f"variables must be dictionary"
-        for key, vals in variables.items():
-            assert (
-                type(vals) == list
-            ), f"variable '{key}' is not a list. Make list (e.g., [{vals}])"
-        self.variables = variables
+
+        self.variable_values = variables
+
+        variable_set = {}
+        for vars in variables:
+            assert type(vars) == dict, f"variables must be dictionary"
+            for key, vals in vars.items():
+                assert (
+                    type(vals) == list
+                ), f"variable '{key}' is not a list. Make list (e.g., [{vals}])"
+            variable_set = variable_set | vars
+
+        self.variables = list(variable_set.keys())
+
         pass
 
     @classmethod
@@ -72,8 +81,8 @@ class Simulation:
         assert set(
             simfunc.__code__.co_varnames[: simfunc.__code__.co_argcount - 2]
         ) == set(
-            cfg.variables.keys()
-        ), f"Set of function arguments simulate{simfunc.__code__.co_varnames[:simfunc.__code__.co_argcount-2]} does not match variables in SimConfig {list(cfg.variables.keys())}!"
+            cfg.variables
+        ), f"Set of function arguments simulate{simfunc.__code__.co_varnames[:simfunc.__code__.co_argcount-2]} does not match variables in SimConfig {cfg.variables}!"
 
         self.cfg = cfg
         self.simpath = simpath
@@ -86,9 +95,22 @@ class Simulation:
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
-        self.index = pd.MultiIndex.from_product(
-            [*self.cfg.variables.values(), [*range(self.cfg.runs)]],
-            names=[*self.cfg.variables.keys(), "run"],
+        names = [*self.cfg.variables, "run"]
+        self.index = pd.MultiIndex(
+            levels=[[] for x in names], codes=[[] for x in names], names=names
+        )
+        curr_var_set = {}
+        tuples = []
+        for var_set in cfg.variable_values:
+            curr_var_set = curr_var_set | var_set
+            index = pd.MultiIndex.from_product(
+                [*curr_var_set.values(), [*range(self.cfg.runs)]],
+            )
+            tuples = tuples + index.values.tolist()
+
+        self.index = pd.MultiIndex.from_tuples(
+            tuples,
+            names=names,
         )
         try:
             mp.set_start_method("spawn")
@@ -185,6 +207,8 @@ class Simulation:
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
+        self.schedd = htcondor.Schedd()
+
         execute_path = os.path.dirname(os.path.realpath(__file__)) + "/sim_execute.py"
 
         submit_data = {
@@ -238,10 +262,11 @@ class Simulation:
 
         submit_result = self.schedd.submit(submit, itemdata=iter(itemdata))
         self.cluster = submit_result.cluster()
+        self.cfg.cluster = submit_result.cluster()
         print(f"Submitted {len(itemdata)} job(s) in cluster {submit_result.cluster()}.")
-        return
+        return self.cluster
 
-    def isDone(self) -> bool:
+    def isDone(self, cluster=None) -> bool:
         try:
             import htcondor
         except:
@@ -251,13 +276,14 @@ class Simulation:
             return None
         self.schedd = htcondor.Schedd()
         assert type(self.schedd) != None, "No condor jobs run yet :("
+        cluster = self.cluster if cluster is None else cluster
         data = self.schedd.query(
-            constraint=f"ClusterId == {self.cluster}",
+            constraint=f"ClusterId == {cluster}",
             projection=["ClusterId", "ProcId"],
         )
         return len(data) == 0
 
-    def getJobStatus(self, proj=["ClusterId", "ProcId", "JobStatus"]):
+    def getJobStatus(self, cluster=None, proj=["ClusterId", "ProcId", "JobStatus"]):
         try:
             import htcondor
         except:
@@ -266,8 +292,9 @@ class Simulation:
             )
             return None
         self.schedd = htcondor.Schedd()
+        cluster = self.cluster if cluster is None else cluster
         return self.schedd.query(
-            constraint=f"ClusterId == {self.cluster}",
+            constraint=f"ClusterId == {cluster}",
             projection=proj,
         )
 
