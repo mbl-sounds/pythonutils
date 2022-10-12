@@ -12,10 +12,11 @@ class SimConfig:
     id: str
     runs: int
     seed: int
-    variables: dict
+    variables: list
+    variable_values: list
     cluster: int
 
-    def __init__(self, id: str, runs: int, seed: int, variables: dict) -> None:
+    def __init__(self, id: str, runs: int, seed: int, variables: list) -> None:
         self.id = id
         self.runs = runs
         self.seed = seed
@@ -43,7 +44,8 @@ class SimConfig:
                 id=data["id"],
                 runs=data["runs"],
                 seed=data["seed"],
-                variables=data["variables"],
+                # variables=data["variables"],
+                variables=data["variable_values"],
             )
         pass
 
