@@ -310,10 +310,10 @@ class Simulation:
             for file in os.listdir(self.tmppath_data)
             if os.path.isfile(os.path.join(self.tmppath_data, file))
         )
-        print(f"Found {len(files)} data files.")
-        assert len(files) == len(
-            self.index
-        ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
+        print(f"Found {len(files)} out of {len(self.index)} data files.")
+        # assert len(files) == len(
+        #     self.index
+        # ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
         dl = {}
         for filename in files:
             with open(self.tmppath_data + "/" + filename, "rb") as f:
