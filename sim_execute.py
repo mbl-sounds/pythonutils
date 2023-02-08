@@ -8,7 +8,7 @@ import importlib.util
 
 #%%
 proc_id: int = int(sys.argv[1])
-task_id: str = sys.argv[2]
+job_id: str = sys.argv[2]
 tmppath: str = sys.argv[3]
 func_data = json.loads(sys.argv[4])
 
@@ -19,8 +19,10 @@ sys.modules[spec.name] = funcmod
 spec.loader.exec_module(funcmod)
 simfunc = getattr(funcmod, func_data["simfunc"])
 
-runresult = {
-    "data": simfunc(*func_data["args"], func_data["seed"]),
-    "args": func_data["args"],
-}
-pickle.dump(runresult, open(tmppath + f"/{task_id}.p", "wb"))
+for args in func_data["args"]:
+    task_id = args["task_id"]
+    runresult = {
+        "data": simfunc(*args["args"], func_data["seed"]),
+        "args": args["args"],
+    }
+    pickle.dump(runresult, open(tmppath + f"/{task_id}.p", "wb"))

@@ -55,7 +55,7 @@ if __name__ == "__main__":
         "request_cpus": "1",
         "request_memory": "1GB",
     }
-    sim.runCondor(user_submit)
+    sim.runCondor(user_submit, 5)
 
     # %%
     print(sim.isDone())

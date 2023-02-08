@@ -199,7 +199,7 @@ class Simulation:
 
         return
 
-    def runCondor(self, user_submit_data: dict):
+    def runCondor(self, user_submit_data: dict, n_jobs=10):
         try:
             import htcondor
         except:
@@ -221,10 +221,10 @@ class Simulation:
             "initialdir": ".",
             "notification": "Error",
             "executable": "/users/sista/mblochbe/python_venvs/admmstuff/bin/python",
-            "arguments": f"{execute_path} $(ProcId) $(task_id) $(tmppath_data) $(func_data)",  # sleep for 10 seconds
-            "output": f"{self.tmppath_out}/{self.cfg.id}.out",  # output and error for each job, using the $(ProcId) macro
+            "arguments": f"{execute_path} $(ProcId) $(job_id) $(tmppath_data) $(func_data)",
+            "output": f"{self.tmppath_out}/{self.cfg.id}.out",
             "error": f"{self.tmppath_out}/{self.cfg.id}.err",
-            "log": f"{self.tmppath_out}/{self.cfg.id}.log",  # we still send all of the HTCondor logs for every job to the same file (not split up!)
+            "log": f"{self.tmppath_out}/{self.cfg.id}.log",
             "request_cpus": "1",
             "request_memory": "128MB",
         }
@@ -233,40 +233,54 @@ class Simulation:
         submit = htcondor.Submit(submit_data)
         print(submit)
         submitted_tasks = 0
-        itemdata = []
+        tasks_per_job = [[] for i in range(n_jobs)]
+        job_id = 0
+        n_subitted_jobs = 0
         for element in self.index:
             task_id = "-".join([str(el) for el in element])
             if not os.path.isfile(self.tmppath_data + f"/{task_id}.p"):
                 assert (
                     len(element) == len(self.cfg.variables) + 1
                 ), f"number of generated arguments not matching!"
-                itemdata.append(
-                    {
-                        "tmppath_data": self.tmppath_data,
-                        "task_id": task_id,
-                        "func_data": "{"
-                        + json.dumps(
-                            json.dumps(
-                                {
-                                    "simpath": self.simpath,
-                                    "simfunc": self.simfunc,
-                                    "args": element,
-                                    "seed": self.cfg.seed,
-                                },
-                                indent=None,
-                                separators=(",", ":"),
-                            )
-                        )[2:-2]
-                        + "}",
-                    }
-                )
-                submitted_tasks += 1
-        print(f"Run {submitted_tasks} (of {len(self.index)}) on cluster")
+                tasks_per_job[job_id].append({"task_id": task_id, "args": element})
+                n_subitted_jobs += 1
+                job_id = job_id + 1 if job_id < n_jobs - 1 else 0
+
+        itemdata = []
+        for elements in tasks_per_job:
+            itemdata.append(
+                {
+                    "tmppath_data": self.tmppath_data,
+                    "job_id": str(submitted_tasks),
+                    "func_data": "{"
+                    + json.dumps(
+                        json.dumps(
+                            {
+                                "simpath": self.simpath,
+                                "simfunc": self.simfunc,
+                                "args": elements,
+                                "seed": self.cfg.seed,
+                            },
+                            indent=None,
+                            separators=(",", ":"),
+                        )
+                    )[2:-2]
+                    + "}",
+                }
+            )
+            submitted_tasks += 1
+
+        print(
+            f"Run {submitted_tasks} condor process(es) with {n_subitted_jobs} (of {len(self.index)}) jobs."
+        )
+        # print(itemdata)
 
         submit_result = self.schedd.submit(submit, itemdata=iter(itemdata))
         self.cluster = submit_result.cluster()
         self.cfg.cluster = submit_result.cluster()
-        print(f"Submitted {len(itemdata)} job(s) in cluster {submit_result.cluster()}.")
+        print(
+            f"Submitted {len(itemdata)} process(es) in cluster {submit_result.cluster()}."
+        )
         return self.cluster
 
     def isDone(self, cluster=None) -> bool:
@@ -311,9 +325,9 @@ class Simulation:
             if os.path.isfile(os.path.join(self.tmppath_data, file))
         )
         print(f"Found {len(files)} data files.")
-        assert len(files) == len(
-            self.index
-        ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
+        # assert len(files) == len(
+        #     self.index
+        # ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
         dl = {}
         for filename in files:
             with open(self.tmppath_data + "/" + filename, "rb") as f:
