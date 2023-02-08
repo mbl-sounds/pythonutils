@@ -97,3 +97,8 @@ def writeMatrix(matrix, name, digits=0):
     with open(name + ".tex", "w") as text_file:
         stringu = a2l.to_ltx(matrix, frmt=frmt, arraytype="bmatrix", print_out=False)
         text_file.write(stringu)
+
+
+def NPM(a, b):
+    e = b - (b.conj().T @ a) / (a.conj().T @ a) * a
+    return np.linalg.norm(e) / np.linalg.norm(b)
