@@ -8,6 +8,22 @@ import multiprocessing as mp
 from dataclasses import dataclass
 
 
+def getQueue(proj=["ClusterId", "ProcId", "JobStatus"]):
+    try:
+        import htcondor
+
+        schedd = htcondor.Schedd()
+        return schedd.query(
+            # constraint=f"ClusterId == {cluster}",
+            projection=proj,
+        )
+    except:
+        print(
+            "You're not on a condor submit node or `htcondor` module is not available, dummy!"
+        )
+        return None
+
+
 class SimConfig:
     id: str
     runs: int
