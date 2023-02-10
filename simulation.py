@@ -236,7 +236,7 @@ class Simulation:
             "nice_user": "true",
             "initialdir": ".",
             "notification": "Error",
-            "executable": "/users/sista/mblochbe/python_venvs/admmstuff/bin/python",
+            "executable": "/users/sista/mblochbe/python_venvs/admm/bin/python",
             "arguments": f"{execute_path} $(ProcId) $(job_id) $(tmppath_data) $(func_data)",
             "output": f"{self.tmppath_out}/{self.cfg.id}.out",
             "error": f"{self.tmppath_out}/{self.cfg.id}.err",
