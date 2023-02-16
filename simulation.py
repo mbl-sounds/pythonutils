@@ -351,6 +351,7 @@ class Simulation:
                 dl[tuple(data["args"])] = data["data"]
         df = pd.DataFrame(dl).T
         df.index.set_names(self.index.names, inplace=True)
+        df.columns.name = "series_index"
         result = SimResult(self.cfg, df, True)
         return result
 
