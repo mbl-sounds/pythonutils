@@ -101,6 +101,21 @@ def writeMatrix(matrix, name, digits=0):
         text_file.write(stringu)
 
 
-def NPM(a, b):
+def NPM(a, b) -> np.float64:
+    """
+    Computes the Normalized Projection Misalignment (NPM) for two vectors a and b.
+
+    Parameters
+    ----------
+    a: np.ndarray
+            Column vector
+    b: np.ndarray
+            Column vector
+
+    Returns
+    -------
+    NPM: np.float64
+            Normalized Projection Misalignment
+    """
     e = b - (b.conj().T @ a) / (a.conj().T @ a) * a
     return np.linalg.norm(e) / np.linalg.norm(b)
