@@ -5,6 +5,7 @@ import numpy as np
 import array_to_latex as a2l
 import matplotlib
 import matplotlib.pyplot as plt
+from typing import Tuple
 
 
 def savefig(
@@ -119,3 +120,39 @@ def NPM(a, b) -> np.float64:
     """
     e = b - (b.conj().T @ a) / (a.conj().T @ a) * a
     return np.linalg.norm(e) / np.linalg.norm(b)
+
+
+def generateRandomIRs(
+    L, N, a, rng=np.random.default_rng()
+) -> Tuple[np.ndarray, np.ndarray]:
+    h = np.array([]).reshape(0, 1)
+    hf = np.zeros((N, L), dtype=np.complex128)
+    for n in range(N):
+        h_ = rng.normal(size=(L, 1))
+        h_ = h_ / np.linalg.norm(h_) * a[n]
+        h = np.concatenate([h, h_])
+        hf[n, :, None] = np.fft.fft(h_, axis=0)
+    return h, hf
+
+
+def getNoisySignal(
+    signal: np.ndarray,
+    IRs: np.ndarray,
+    SNR: np.float64,
+    rng=np.random.default_rng(),
+    noise_type="white",
+) -> np.ndarray:
+    N_s = signal.shape[0]
+    L = IRs.shape[0]
+    N = IRs.shape[1]
+
+    var_s = np.var(signal)
+    s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
+
+    x_ = np.zeros(shape=(N_s, N))
+    n_var = 10 ** (-SNR / 20) * var_s * np.linalg.norm(IRs) ** 2 / N
+    for k in range(N_s - L):
+        x_[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(n_var) * rng.normal(
+            size=(N, 1)
+        )
+    return x_
