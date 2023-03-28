@@ -125,13 +125,34 @@ def NPM(a, b) -> np.float64:
 def generateRandomIRs(
     L, N, a, rng=np.random.default_rng()
 ) -> Tuple[np.ndarray, np.ndarray]:
-    h = np.array([]).reshape(0, 1)
-    hf = np.zeros((N, L), dtype=np.complex128)
+    """
+    Generates random impulse responses WGN
+
+    Parameters
+    ----------
+    L: int
+            length of IRs
+    N: int
+            number of channels/IRs
+    a: Array-like
+            target norm values of IRs (must have N elements)
+    rng: Generator
+            The random generator to be used
+
+    Returns
+    -------
+    h: np.ndarray
+            LxN array containing the generated IRs
+    hf: np.ndarray
+            LxN array containing the L-sample FFT of generated IRs
+    """
+    h = np.zeros((L, N))
+    hf = np.zeros((L, N), dtype=np.complex128)
     for n in range(N):
         h_ = rng.normal(size=(L, 1))
         h_ = h_ / np.linalg.norm(h_) * a[n]
-        h = np.concatenate([h, h_])
-        hf[n, :, None] = np.fft.fft(h_, axis=0)
+        h[:, n, None] = h_
+        hf[:, n, None] = np.fft.fft(h_, axis=0)
     return h, hf
 
 
@@ -142,6 +163,27 @@ def getNoisySignal(
     rng=np.random.default_rng(),
     noise_type="white",
 ) -> np.ndarray:
+    """
+    Generates random impulse responses WGN
+
+    Parameters
+    ----------
+    signal: np.ndarray
+            clean signal (single channel)
+    IRs: np.ndarray
+            LxN array containing IRs
+    a: Array-like
+            target norm values of IRs (must have N elements)
+    rng: Generator
+            The random generator to be used
+
+    Returns
+    -------
+    h: np.ndarray
+            LxN array containing the generated IRs
+    hf: np.ndarray
+            LxN array containing the L-sample FFT of generated IRs
+    """
     N_s = signal.shape[0]
     L = IRs.shape[0]
     N = IRs.shape[1]
@@ -156,3 +198,11 @@ def getNoisySignal(
             size=(N, 1)
         )
     return x_
+
+
+def discreteEntropy(x: np.ndarray) -> float:
+    L = x.shape[0]
+    _, counts = np.unique(np.round(x * 1e20) / 1e20, return_counts=True, axis=0)
+    pn = counts / L
+    ent = -np.sum(pn * np.log2(pn))
+    return ent
