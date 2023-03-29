@@ -157,6 +157,8 @@ def generateNonStationaryNoise(
         env_part = rng.normal(size=(dur,), scale=noise)  # + np.sin(t) * amp
         signal = np.concatenate([signal, env_part])
 
+    signal = signal[:num_samples].reshape(num_samples, 1)
+
     return signal / signal.max()
 
 
@@ -257,3 +259,67 @@ def discreteEntropy(x: np.ndarray) -> float:
     pn = counts / L
     ent = -np.sum(pn * np.log2(pn))
     return ent
+
+
+def generateRandomWSNTop(
+    num_nodes: int,
+    room_dim: list | np.ndarray,
+    num_closest: int = 0,
+    margin: float = 0.5,
+    num_sources: int = 0,
+    rng=np.random.default_rng(),
+) -> Tuple[np.ndarray, list] | Tuple[np.ndarray, list, np.ndarray]:
+    """
+    generates a random WASN network topology within a room
+
+    Parameters
+    ----------
+    num_nodes: int
+            Number of nodes in the network
+    room_dim: list, ndarray
+            room dimensions within which the nodes are placed
+    num_closest: int
+            Number of minumum connections per node (closest neighbors)
+            If no value given, no connections generated
+    margin: float
+            minimum distance from room walls
+    rng: Generator
+            random number generator
+
+
+    Returns
+    -------
+    node_pos: ndarray
+            Node positions in 3d space
+    network_edges: list
+            list of edges (connections) between nodes
+    """
+    node_pos = np.asarray(
+        [
+            rng.uniform(0.0 + margin, room_dim[0] - margin, size=(num_nodes,)),
+            rng.uniform(0.0 + margin, room_dim[1] - margin, size=(num_nodes,)),
+            rng.uniform(0.0 + margin, room_dim[2] - margin, size=(num_nodes,)),
+        ]
+    ).T
+
+    network_edges = []
+    for i in range(num_nodes):
+        d = []
+        for j in range(num_nodes):
+            d.append(np.linalg.norm(node_pos[i, :] - node_pos[j, :]))
+        idx = np.argsort(np.asarray(d))
+        for kk in range(num_closest):
+            if [idx[kk + 1], i] not in network_edges:
+                network_edges.append([i, idx[kk + 1]])
+
+    if num_sources > 0:
+        src_pos = np.asarray(
+            [
+                rng.uniform(0.0 + margin, room_dim[0] - margin, size=(num_sources,)),
+                rng.uniform(0.0 + margin, room_dim[1] - margin, size=(num_sources,)),
+                rng.uniform(0.0 + margin, room_dim[2] - margin, size=(num_sources,)),
+            ]
+        ).T
+
+        return (node_pos, network_edges, src_pos)
+    return (node_pos, network_edges)
