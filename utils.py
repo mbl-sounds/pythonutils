@@ -122,6 +122,44 @@ def NPM(a, b) -> np.float64:
     return np.linalg.norm(e) / np.linalg.norm(b)
 
 
+def generateNonStationaryNoise(
+    num_samples: int, fs: float, rng=np.random.default_rng()
+) -> np.ndarray:
+    """
+    Generates WGN with randomized segments of variance mimicking the envelope of speech (not that well though)
+
+    Parameters
+    ----------
+    num_samples: int
+            number of signal samples to generate
+    fs: float
+            sampling rate
+    rng: Generator
+            random number generator
+
+    Returns
+    -------
+    signal: np.ndarray
+            generated signal
+    """
+    # TODO formant filters
+    # TODO glottal pulse train
+    length = 0
+    signal = np.asarray([])
+    while length < num_samples:
+        dur = int(rng.uniform(0.01 * fs, 0.2 * fs))
+        # amp = rng.uniform(0.0, 1.0)
+        freq = rng.uniform(200, 6000)
+        noise = rng.uniform(0.0001, 0.1)
+        # noise = 0
+        length += dur
+        t = np.linspace(0, (dur) / fs, dur) * freq * 2 * np.pi
+        env_part = rng.normal(size=(dur,), scale=noise)  # + np.sin(t) * amp
+        signal = np.concatenate([signal, env_part])
+
+    return signal / signal.max()
+
+
 def generateRandomIRs(
     L, N, a, rng=np.random.default_rng()
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -164,7 +202,7 @@ def getNoisySignal(
     noise_type="white",
 ) -> np.ndarray:
     """
-    Generates random impulse responses WGN
+    Convolves clean signal with IRs and adds noise at SNR.
 
     Parameters
     ----------
@@ -201,6 +239,19 @@ def getNoisySignal(
 
 
 def discreteEntropy(x: np.ndarray) -> float:
+    """
+    Computes the discrete entropy -sum(pn*log2(pn))
+
+    Parameters
+    ----------
+    x: np.ndarray
+            array, of which the entropy should be computed. Rows are considered elements to test for uniqueness.
+
+    Returns
+    -------
+    ent: float
+        Discrete entropy
+    """
     L = x.shape[0]
     _, counts = np.unique(np.round(x * 1e20) / 1e20, return_counts=True, axis=0)
     pn = counts / L
