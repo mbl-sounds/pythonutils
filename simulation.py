@@ -355,6 +355,31 @@ class Simulation:
         result = SimResult(self.cfg, df, True)
         return result
 
+    def getMultiVarResult(self, data_var) -> SimResult:
+        assert os.path.isdir(
+            self.tmppath_data
+        ), f"No data path {self.tmppath_data}. Re-initialize or rerun simulation."
+        files = sorted(
+            file
+            for file in os.listdir(self.tmppath_data)
+            if os.path.isfile(os.path.join(self.tmppath_data, file))
+        )
+        print(f"Found {len(files)} data files.")
+        dl = {}
+        for filename in files:
+            with open(self.tmppath_data + "/" + filename, "rb") as f:
+                data = pickle.load(f)
+                if type(data_var) is str:
+                    dl[tuple(data["args"])] = data["data"][data_var]
+                else:
+                    dl[tuple(data["args"])] = data["data"][data_var[0]][data_var[1]]
+
+        df = pd.DataFrame(dl).T
+        df.index.set_names(self.index.names, inplace=True)
+        df.columns.name = "series_index"
+        result = SimResult(self.cfg, df, True)
+        return result
+
     def clearTmpData(self):
         if os.path.exists(self.tmppath) and os.path.isdir(self.tmppath):
             shutil.rmtree(self.tmppath)

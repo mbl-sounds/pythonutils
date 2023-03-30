@@ -144,16 +144,17 @@ def generateNonStationaryNoise(
     """
     # TODO formant filters
     # TODO glottal pulse train
-    length = 0
-    signal = np.asarray([])
+    # "silence" in the beginning
+    length = int(0.1 * fs)
+    signal = np.zeros((length,))
     while length < num_samples:
         dur = int(rng.uniform(0.01 * fs, 0.2 * fs))
         # amp = rng.uniform(0.0, 1.0)
-        freq = rng.uniform(200, 6000)
+        # freq = rng.uniform(200, 6000)
         noise = rng.uniform(0.0001, 0.1)
         # noise = 0
         length += dur
-        t = np.linspace(0, (dur) / fs, dur) * freq * 2 * np.pi
+        # t = np.linspace(0, (dur) / fs, dur) * freq * 2 * np.pi
         env_part = rng.normal(size=(dur,), scale=noise)  # + np.sin(t) * amp
         signal = np.concatenate([signal, env_part])
 
@@ -240,7 +241,7 @@ def getNoisySignal(
     return x_
 
 
-def discreteEntropy(x: np.ndarray) -> float:
+def discreteEntropy(x: np.ndarray, base: float = 2) -> float:
     """
     Computes the discrete entropy -sum(pn*log2(pn))
 
@@ -254,10 +255,18 @@ def discreteEntropy(x: np.ndarray) -> float:
     ent: float
         Discrete entropy
     """
+    assert base in [2, np.e, 10], "base must be either 2, e, or 10"
     L = x.shape[0]
     _, counts = np.unique(np.round(x * 1e20) / 1e20, return_counts=True, axis=0)
     pn = counts / L
-    ent = -np.sum(pn * np.log2(pn))
+    if base == 10:
+        pnl = np.log10(pn)
+    if base == np.e:
+        pnl = np.log(pn)
+    if base == 2:
+        pnl = np.log2(pn)
+
+    ent = -np.sum(pn * pnl)
     return ent
 
 
