@@ -60,9 +60,7 @@ def saveFigAndMoveToNotes(fig, name, format="png"):
     pass
 
 
-def set_size(
-    width_pt, fraction=1, subplots=(1, 1), ratio=(5**0.5 - 1) / 2, dpi=72.27
-):
+def set_size(width_pt, fraction=1, subplots=(1, 1), ratio=(5**0.5 - 1) / 2):
     """Set figure dimensions to sit nicely in our document.
 
     Parameters
@@ -80,14 +78,14 @@ def set_size(
     """
     # Width of figure (in pts)
     fig_width_pt = width_pt * fraction
-    # Convert from pt to inches
-    inches_per_pt = 1 / dpi
+    # Convert from pt to inches (this is not DPI!!)
+    latex_inches_per_pt = 1 / 72.27
 
     # # Golden ratio to set aesthetic figure height
     # golden_ratio =
 
     # Figure width in inches
-    fig_width_in = fig_width_pt * inches_per_pt
+    fig_width_in = fig_width_pt * latex_inches_per_pt
     # Figure height in inches
     fig_height_in = fig_width_in * ratio * (subplots[0] / subplots[1])
 
