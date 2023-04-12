@@ -2,7 +2,6 @@ import sys
 import os
 import shutil
 import numpy as np
-import array_to_latex as a2l
 import matplotlib
 import matplotlib.pyplot as plt
 from typing import Tuple
@@ -93,13 +92,6 @@ def set_size(width_pt, fraction=1, subplots=(1, 1), ratio=(5**0.5 - 1) / 2):
     fig_height_in = fig_width_in * ratio * (subplots[0] / subplots[1])
 
     return (fig_width_in, fig_height_in)
-
-
-def writeMatrix(matrix, name, digits=0):
-    frmt = "{:6.%df}" % (digits)
-    with open(name + ".tex", "w") as text_file:
-        stringu = a2l.to_ltx(matrix, frmt=frmt, arraytype="bmatrix", print_out=False)
-        text_file.write(stringu)
 
 
 def NPM(a, b) -> np.float64:
