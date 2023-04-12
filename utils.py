@@ -7,6 +7,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from typing import Tuple
 
+DATA_DIRECTORY = "/esat/stadiustempdatasets/mblochbe"
+
 
 def savefig(
     fig, name, format="png", facecolor="white", transparent=False, pgf_font="sans-serif"

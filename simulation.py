@@ -3,6 +3,7 @@ import json
 import pickle
 import shutil
 import pandas as pd
+import numpy as np
 from typing import Callable
 import multiprocessing as mp
 from dataclasses import dataclass
@@ -95,7 +96,9 @@ class Simulation:
     schedd: None
     cluster: int
 
-    def __init__(self, cfg: SimConfig, simpath: str, simfunc: Callable) -> None:
+    def __init__(
+        self, cfg: SimConfig, simpath: str, simfunc: Callable, data_dir: str = "tmpdata"
+    ) -> None:
         assert set(
             simfunc.__code__.co_varnames[: simfunc.__code__.co_argcount - 2]
         ) == set(
@@ -107,9 +110,9 @@ class Simulation:
         self.simfunc_local = simfunc
         self.simfunc = simfunc.__name__
 
-        self.tmppath = f"tmpdata/{self.cfg.id}"
-        self.tmppath_data = f"tmpdata/{self.cfg.id}/data"
-        self.tmppath_out = f"tmpdata/{self.cfg.id}/out"
+        self.tmppath = f"{data_dir}/{self.cfg.id}"
+        self.tmppath_data = f"{data_dir}/{self.cfg.id}/data"
+        self.tmppath_out = f"{data_dir}/{self.cfg.id}/out"
         os.makedirs(self.tmppath_data, exist_ok=True)
         os.makedirs(self.tmppath_out, exist_ok=True)
 
@@ -355,6 +358,35 @@ class Simulation:
         result = SimResult(self.cfg, df, True)
         return result
 
+    def getResult1(self, var) -> SimResult:
+        assert os.path.isdir(
+            self.tmppath_data
+        ), f"No data path {self.tmppath_data}. Re-initialize or rerun simulation."
+        files = sorted(
+            file
+            for file in os.listdir(self.tmppath_data)
+            if os.path.isfile(os.path.join(self.tmppath_data, file))
+        )
+        print(f"Found {len(files)} data files.")
+        # assert len(files) == len(
+        #     self.index
+        # ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
+        dl = {}
+        for filename in files:
+            with open(self.tmppath_data + "/" + filename, "rb") as f:
+                data = pickle.load(f)
+                if type(data["data"][var]) is dict:
+                    data_np = np.asarray(list(data["data"][var].values())).squeeze()
+                if type(data["data"][var]) is list:
+                    data_np = np.asarray(list(data["data"][var])).squeeze().T
+                for k in range(data_np.shape[0]):
+                    dl[(*data["args"], k)] = data_np[k, :]
+        df = pd.DataFrame(dl).T
+        df.index.set_names([*self.index.names, "k"], inplace=True)
+        df.columns.name = "series_index"
+        result = SimResult(self.cfg, df, True)
+        return result
+
     def getMultiVarResult(self, data_var) -> SimResult:
         assert os.path.isdir(
             self.tmppath_data
@@ -381,6 +413,6 @@ class Simulation:
         return result
 
     def clearTmpData(self):
-        if os.path.exists(self.tmppath) and os.path.isdir(self.tmppath):
-            shutil.rmtree(self.tmppath)
+        if os.path.exists(self.tmppath_data) and os.path.isdir(self.tmppath_data):
+            shutil.rmtree(self.tmppath_data)
         return
