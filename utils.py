@@ -212,10 +212,8 @@ def getNoisySignal(
 
     Returns
     -------
-    h: np.ndarray
-            LxN array containing the generated IRs
-    hf: np.ndarray
-            LxN array containing the L-sample FFT of generated IRs
+    noisy_signal: np.ndarray
+            convolved and noisy signals
     """
     N_s = signal.shape[0]
     L = IRs.shape[0]
@@ -224,13 +222,13 @@ def getNoisySignal(
     var_s = np.var(signal)
     s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
 
-    x_ = np.zeros(shape=(N_s, N))
+    noisy_signal = np.zeros(shape=(N_s, N))
     n_var = 10 ** (-SNR / 20) * var_s * np.linalg.norm(IRs) ** 2 / N
     for k in range(N_s - L):
-        x_[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(n_var) * rng.normal(
-            size=(N, 1)
-        )
-    return x_
+        noisy_signal[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(
+            n_var
+        ) * rng.normal(size=(N, 1))
+    return noisy_signal
 
 
 def discreteEntropy(x: np.ndarray, base: float = 2) -> float:
