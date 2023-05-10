@@ -373,12 +373,15 @@ class Simulation:
         # ), f"Requires {len(self.index)} data files! Check if simulation finished sucessfully!"
         dl = {}
         for filename in files:
+            print(filename)
             with open(self.tmppath_data + "/" + filename, "rb") as f:
                 data = pickle.load(f)
                 if type(data["data"][var]) is dict:
                     data_np = np.asarray(list(data["data"][var].values())).squeeze()
                 if type(data["data"][var]) is list:
                     data_np = np.asarray(list(data["data"][var])).squeeze().T
+                if type(data["data"][var]) is np.ndarray:
+                    data_np = data["data"][var].squeeze().T
                 for k in range(data_np.shape[0]):
                     dl[(*data["args"], k)] = data_np[k, :]
         df = pd.DataFrame(dl).T
