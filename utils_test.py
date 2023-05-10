@@ -158,3 +158,29 @@ sd.play(yout, fs)
 
 # %%
 sd.stop()
+
+# %%
+import huffman as hm
+import numpy as np
+import matplotlib.pyplot as plt
+
+numbers = np.random.normal(20, size=(10000,)).round(1)
+data = numbers.tobytes()
+encoded, tree = hm.huffman_encode(data)
+
+# Pretty print the Huffman table
+print(f"Symbol Code\n------ ----")
+for k, v in sorted(hm.huffman_table(tree).items(), key=lambda x: len(x[1])):
+    print(f"{k:<6} {v}")
+
+# Print the bit pattern of the encoded data
+# print("".join(hm._bits_from_bytes(encoded)))
+
+# Encode then decode
+decoded = hm.huffman_decode(*hm.huffman_encode(data))
+numbers_decoded = np.frombuffer(decoded)
+
+# print(numbers - numbers_decoded)
+print("Error:", np.linalg.norm(numbers - numbers_decoded))
+
+# %%
