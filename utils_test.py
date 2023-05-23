@@ -164,7 +164,7 @@ import huffman as hm
 import numpy as np
 import matplotlib.pyplot as plt
 
-numbers = np.random.normal(20, size=(10000,)).round(1)
+numbers = np.random.normal(20, size=(100000,)).round(2)
 data = numbers.tobytes()
 encoded, tree = hm.huffman_encode(data)
 
