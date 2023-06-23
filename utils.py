@@ -223,7 +223,7 @@ def getNoisySignal(
     s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
 
     noisy_signal = np.zeros(shape=(N_s, N))
-    n_var = 10 ** (-SNR / 20) * var_s * np.linalg.norm(IRs) ** 2 / N
+    n_var = 10 ** (-SNR / 10) * var_s * np.linalg.norm(IRs) ** 2 / N
     for k in range(N_s - L):
         noisy_signal[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(
             n_var
