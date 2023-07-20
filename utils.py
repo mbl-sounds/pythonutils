@@ -9,8 +9,31 @@ from typing import Tuple
 DATA_DIRECTORY = "/esat/stadiustempdatasets/mblochbe"
 
 
+def printProgressBar(
+    iteration,
+    total,
+    prefix="",
+    suffix="",
+    decimals=1,
+    length=100,
+    fill="█",
+    printEnd="\r",
+):
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + "-" * (length - filledLength)
+    print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd, flush=True)
+
+
 def progressBar(
-    iterable, prefix="", suffix="", decimals=1, length=100, fill="█", printEnd="\r"
+    iterable,
+    total,
+    prefix="",
+    suffix="",
+    decimals=1,
+    length=100,
+    fill="█",
+    printEnd="\r",
 ):
     """
     Call in a loop to create terminal progress bar
@@ -23,7 +46,7 @@ def progressBar(
         fill        - Optional  : bar fill character (Str)
         printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
     """
-    total = len(iterable)
+    # total = len(iterable)
 
     # Progress Bar Printing Function
     def printProgressBar(iteration):
