@@ -7,6 +7,26 @@ import multiprocess as mp
 
 
 class DockerSim:
+    """
+    Class for a simulation run in a docker container on multiple processes.
+
+
+    Parameters
+    ----------
+    func: Callable
+        the function in which the simulation takes place, has to yield a dict of values
+    tasks: list[dict]
+        the list of tasks, i.e., the parameter combinations
+        (keys of the dictionary have to be the function arguments of func)
+    return_value_names: list[str]
+        the names of the fields of the dict that is yielded by func
+    seed: int
+        random seed
+    datadir: str
+        directory where data files should be stored
+
+    """
+
     func: Callable
     tasks: Iterable[dict]
     variable_names: list[str]
@@ -50,10 +70,11 @@ class DockerSim:
             rng = np.random.default_rng(np.random.PCG64DXSM(self.seed).jumped(run_nr))
             del data["run_nr"]
             # result = self.func(rng=rng, **data)
-            result_writer.writerows(
-                {"run_nr": run_nr, **data, "series": series, **values}
-                for series, values in enumerate(self.func(rng=rng, **data))
-            )
+            with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
+                result_writer.writerows(
+                    {"run_nr": run_nr, **data, "series": series, **values}
+                    for series, values in enumerate(self.func(rng=rng, **data))
+                )
 
     def run(
         self,
@@ -61,6 +82,23 @@ class DockerSim:
         num_processes: int = 4,
         seed: int = None,
     ):
+        """
+        Runs the simulation as defined
+
+        Parameters
+        ----------
+        runs: int (optional, default: 50)
+            the number of realizations to be computed for each task
+        num_processes: int (optional, default: 4)
+            the number of processes the tasks are distributed over
+        seed: int (optional, default as defined in class)
+            random seed for generators
+
+        """
+        for fileName in os.listdir(self.datadir):
+            if fileName.endswith(".csv"):
+                os.remove(self.datadir + "/" + fileName)
+
         self.seed = self.seed if seed is None else seed
         run_tasks = []
         for task in self.tasks:
@@ -73,7 +111,8 @@ class DockerSim:
                 total=len(run_tasks),
                 position=0,
                 leave=True,
-                unit="runs",
+                unit="real.",
+                # colour="green",
             ) as pbar:
                 for _ in pool.imap(self._workerProc, run_tasks):
                     pbar.update()
