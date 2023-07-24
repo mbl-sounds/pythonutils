@@ -380,3 +380,7 @@ def generateRandomWSNTop(
 
         return (node_pos, network_edges, src_pos)
     return (node_pos, network_edges)
+
+
+def getPart(index, part_len) -> int:
+    return int(np.floor(index / part_len))
