@@ -13,11 +13,17 @@ class DockerSim:
     seed: int
 
     def __init__(
-        self, func: Callable, tasks: Iterable[dict], seed: int, datadir: str = "."
+        self,
+        func: Callable,
+        tasks: Iterable[dict],
+        return_value_names: Iterable[str],
+        seed: int,
+        datadir: str = ".",
     ) -> None:
         self.func = func
         self.tasks = tasks
         self.variable_names = list(tasks[0].keys())
+        self.return_value_names = return_value_names
         self.seed = seed
         self.datadir = datadir
         pass
@@ -27,7 +33,12 @@ class DockerSim:
         with open(file_name, mode="a+") as result_file:
             result_writer = csv.DictWriter(
                 result_file,
-                fieldnames=["run_nr", *self.variable_names, "series", "value"],
+                fieldnames=[
+                    "run_nr",
+                    *self.variable_names,
+                    "series",
+                    *self.return_value_names,
+                ],
                 delimiter=",",
                 quotechar='"',
                 quoting=csv.QUOTE_MINIMAL,
@@ -38,10 +49,10 @@ class DockerSim:
             run_nr = data["run_nr"]
             rng = np.random.default_rng(np.random.PCG64DXSM(self.seed).jumped(run_nr))
             del data["run_nr"]
-            result = self.func(rng=rng, **data)
+            # result = self.func(rng=rng, **data)
             result_writer.writerows(
-                {"run_nr": run_nr, **data, "series": series, "value": value}
-                for series, value in enumerate(result)
+                {"run_nr": run_nr, **data, "series": series, **values}
+                for series, values in enumerate(self.func(rng=rng, **data))
             )
 
     def run(
@@ -54,6 +65,9 @@ class DockerSim:
         run_tasks = []
         for task in self.tasks:
             run_tasks += [{"run_nr": run, **task} for run in range(runs)]
+        print(
+            f"Running {runs} realizations of {len(self.tasks)} tasks each (= {len(run_tasks)}) in {num_processes} processes."
+        )
         with mp.Pool(processes=num_processes) as pool:
             with tqdm(
                 total=len(run_tasks),
