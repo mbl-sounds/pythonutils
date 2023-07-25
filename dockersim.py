@@ -113,6 +113,7 @@ class DockerSim:
                 leave=True,
                 unit="real.",
                 # colour="green",
+                smoothing=0,
             ) as pbar:
                 for _ in pool.imap(self._workerProc, run_tasks):
                     pbar.update()
