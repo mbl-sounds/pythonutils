@@ -50,9 +50,7 @@ def progressBar(
 
     # Progress Bar Printing Function
     def printProgressBar(iteration):
-        percent = ("{0:." + str(decimals) + "f}").format(
-            100 * (iteration / float(total))
-        )
+        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
         filledLength = int(length * iteration // total)
         bar = fill * filledLength + "-" * (length - filledLength)
         print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd, flush=True)
@@ -243,7 +241,7 @@ def generateRandomIRs(
         h_ = rng.normal(size=(L, 1))
         h_ = h_ / np.linalg.norm(h_) * a[n]
         h[:, n, None] = h_
-        hf[:, n, None] = np.fft.fft(h_, axis=0)
+        hf[:, n, None] = np.fft.fft(h_, n=L, axis=0)
     return h, hf
 
 
@@ -262,7 +260,7 @@ def getNoisySignal(
     signal: np.ndarray
             clean signal (single channel)
     IRs: np.ndarray
-            LxN array containing IRs
+            LxM array containing IRs
     a: Array-like
             target norm values of IRs (must have N elements)
     rng: Generator
@@ -275,17 +273,21 @@ def getNoisySignal(
     """
     N_s = signal.shape[0]
     L = IRs.shape[0]
-    N = IRs.shape[1]
+    M = IRs.shape[1]
 
     var_s = np.var(signal)
-    s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
+    # s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
 
-    noisy_signal = np.zeros(shape=(N_s, N))
-    n_var = 10 ** (-SNR / 10) * var_s * np.linalg.norm(IRs) ** 2 / N
-    for k in range(N_s - L):
-        noisy_signal[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(
+    noisy_signal = np.zeros(shape=(N_s + L - 1, M))
+    n_var = 10 ** (-SNR / 10) * var_s * np.linalg.norm(IRs) ** 2 / M
+    for m in range(M):
+        noisy_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze()) + np.sqrt(
             n_var
-        ) * rng.normal(size=(N, 1))
+        ) * rng.normal(size=(N_s + L - 1,))
+    # for k in range(N_s - L):
+    #     noisy_signal[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(
+    #         n_var
+    #     ) * rng.normal(size=(N, 1))
     return noisy_signal
 
 
