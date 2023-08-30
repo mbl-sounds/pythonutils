@@ -170,6 +170,54 @@ def NPM(a, b) -> np.float64:
     return np.linalg.norm(e) / np.linalg.norm(b)
 
 
+def NFPM(h_est, h_true, L, M, Df=199):
+    """
+    Computes the Normalized Filter-Projection Misalignment (NFPM) for two vectors a and b.
+
+    Parameters
+    ----------
+    a: np.ndarray
+            Column vector
+    b: np.ndarray
+            Column vector
+    L: int
+            length of single IR
+    M: int
+            number of channels
+    Df: int
+            length of common filter
+
+    Returns
+    -------
+    NFPM: np.float64
+            Normalized Filter-Projection Misalignment
+    """
+    assert h_true.shape == h_est.shape, "estimate and true dont have the same length"
+    assert h_est.shape[0] == M * L, "estimate is not correct length M*L"
+    assert h_true.shape[0] == M * L, "ground truth is not correct length M*L"
+
+    H = []
+    h_tilde = []
+    for i in range(M):
+        H_i = np.zeros((L + 2 * Df, 2 * Df + 1))
+        for n in range(2 * Df + 1):
+            H_i[n : n + L, n, None] = h_true[i * L : (i + 1) * L]
+        H.append(H_i)
+        h_i_tilde = np.pad(
+            h_est[i * L : (i + 1) * L],
+            ((Df, Df), (0, 0)),
+        )
+        h_tilde.append(h_i_tilde)
+
+    H = np.concatenate(H)
+    h_tilde = np.concatenate(h_tilde)
+
+    nfpm = np.linalg.norm(
+        h_tilde - H @ np.linalg.inv(H.T @ H) @ H.T @ h_tilde
+    ) / np.linalg.norm(h_tilde)
+    return nfpm
+
+
 def generateNonStationaryNoise(
     num_samples: int, fs: float, rng=np.random.default_rng()
 ) -> np.ndarray:
@@ -243,6 +291,44 @@ def generateRandomIRs(
         h[:, n, None] = h_
         hf[:, n, None] = np.fft.fft(h_, n=L, axis=0)
     return h, hf
+
+
+# def generateRandomIRs(
+#     L, N, a, nz, delta, rng=np.random.default_rng()
+# ) -> Tuple[np.ndarray, np.ndarray]:
+#     """
+#     Generates random impulse responses (WGN) with a defined number of (near-common) zeros
+
+#     Parameters
+#     ----------
+#     L: int
+#             length of IRs
+#     N: int
+#             number of channels/IRs
+#     a: Array-like
+#             target norm values of IRs (must have N elements)
+#     nz: int
+#             number of (near-)common zeros
+#     delta: float
+#             distance of near common zeros
+#     rng: Generator
+#             The random generator to be used
+
+#     Returns
+#     -------
+#     h: np.ndarray
+#             LxN array containing the generated IRs
+#     hf: np.ndarray
+#             LxN array containing the L-sample FFT of generated IRs
+#     """
+#     h = np.zeros((L, N))
+#     hf = np.zeros((L, N), dtype=np.complex128)
+#     for n in range(N):
+#         h_ = rng.normal(size=(L, 1))
+#         h_ = h_ / np.linalg.norm(h_) * a[n]
+#         h[:, n, None] = h_
+#         hf[:, n, None] = np.fft.fft(h_, n=L, axis=0)
+#     return h, hf
 
 
 def getNoisySignal(
