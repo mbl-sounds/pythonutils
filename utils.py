@@ -490,8 +490,7 @@ def erank(A: np.ndarray):
     erank: float
             effective rank
     """
-    Q = np.min(A.shape)
-    u, s, vh = np.linalg.svd(A)
+    _, s, _ = np.linalg.svd(A)
     p_k = s / np.linalg.norm(s, 1)
     H = -np.sum(p_k * np.log(p_k))
     return np.exp(H)
