@@ -472,3 +472,26 @@ def generateRandomWSNTop(
 
 def getPart(index, part_len) -> int:
     return int(np.floor(index / part_len))
+
+
+def erank(A: np.ndarray):
+    """
+    Computes the effective rank of the matrix A as proposed in
+    Olivier Roy and Martin Vetterli, The effective rank: A measure of effective dimensionality
+
+    Parameters
+    ----------
+    A: ndarray
+            The matrix
+
+
+    Returns
+    -------
+    erank: int
+            effective rank
+    """
+    Q = np.min(A.shape)
+    u, s, vh = np.linalg.svd(A)
+    p_k = s / np.linalg.norm(s, 1)
+    H = -np.sum(p_k * np.log(p_k))
+    return np.exp(H)
