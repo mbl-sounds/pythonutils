@@ -487,7 +487,7 @@ def erank(A: np.ndarray):
 
     Returns
     -------
-    erank: int
+    erank: float
             effective rank
     """
     Q = np.min(A.shape)
@@ -495,3 +495,29 @@ def erank(A: np.ndarray):
     p_k = s / np.linalg.norm(s, 1)
     H = -np.sum(p_k * np.log(p_k))
     return np.exp(H)
+
+
+def nrank(A: np.ndarray, epsilon: float = np.finfo, normalized=False):
+    """
+    Computes the epsilon-numerical rank of the matrix A
+    r_n = min{ r: sigma_r <= epsilon}
+
+    Parameters
+    ----------
+    A: ndarray
+            The matrix
+    epsilon: float
+            threshold of singular values to be counted
+    normalized: bool
+            whether the singular values should be normalized before applying threshold
+
+
+    Returns
+    -------
+    erank: int
+            epsilon-numerical rank
+    """
+    _, s, _ = np.linalg.svd(A)
+    if normalized:
+        return np.sum(s / np.sum(s) > epsilon)
+    return np.sum(s > epsilon)
