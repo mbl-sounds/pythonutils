@@ -39,6 +39,7 @@ class DockerSim:
         return_value_names: Iterable[str],
         seed: int,
         datadir: str = ".",
+        file_suffix: str = "results",
     ) -> None:
         self.func = func
         self.tasks = tasks
@@ -46,10 +47,11 @@ class DockerSim:
         self.return_value_names = return_value_names
         self.seed = seed
         self.datadir = datadir
+        self.file_suffix = file_suffix
         pass
 
     def _workerProc(self, data):
-        file_name = f"{self.datadir}/results_{mp.current_process().name}.csv"
+        file_name = f"{self.datadir}/{self.file_suffix}_{mp.current_process().name}.csv"
         with open(file_name, mode="a+") as result_file:
             result_writer = csv.DictWriter(
                 result_file,
