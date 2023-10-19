@@ -170,7 +170,11 @@ def NPM(a, b) -> np.float64:
     return np.linalg.norm(e) / np.linalg.norm(b)
 
 
-def NFPM(h_est, h_true, L, M, Df=199):
+H_TRUE: np.ndarray = None
+F_OPT: np.ndarray = None
+
+
+def NFPM(h_est: np.ndarray, h_true: np.ndarray, L: int, M: int, Df: int = 199):
     """
     Computes the Normalized Filter-Projection Misalignment (NFPM) for two vectors a and b.
 
@@ -192,29 +196,35 @@ def NFPM(h_est, h_true, L, M, Df=199):
     NFPM: np.float64
             Normalized Filter-Projection Misalignment
     """
+    global H_TRUE
+    global F_OPT
     assert h_true.shape == h_est.shape, "estimate and true dont have the same length"
     assert h_est.shape[0] == M * L, "estimate is not correct length M*L"
     assert h_true.shape[0] == M * L, "ground truth is not correct length M*L"
 
-    H = []
+    if np.any(H_TRUE != h_true) or F_OPT is None:
+        print("recalc")
+        H = []
+        for i in range(M):
+            H_i = np.zeros((L + 2 * Df, 2 * Df + 1))
+            for n in range(2 * Df + 1):
+                H_i[n : n + L, n, None] = h_true[i * L : (i + 1) * L]
+            H.append(H_i)
+        H = np.concatenate(H)
+        H_TRUE = h_true
+        F_OPT = H @ np.linalg.inv(H.T @ H) @ H.T
+
     h_tilde = []
     for i in range(M):
-        H_i = np.zeros((L + 2 * Df, 2 * Df + 1))
-        for n in range(2 * Df + 1):
-            H_i[n : n + L, n, None] = h_true[i * L : (i + 1) * L]
-        H.append(H_i)
         h_i_tilde = np.pad(
             h_est[i * L : (i + 1) * L],
             ((Df, Df), (0, 0)),
         )
         h_tilde.append(h_i_tilde)
 
-    H = np.concatenate(H)
     h_tilde = np.concatenate(h_tilde)
 
-    nfpm = np.linalg.norm(
-        h_tilde - H @ np.linalg.inv(H.T @ H) @ H.T @ h_tilde
-    ) / np.linalg.norm(h_tilde)
+    nfpm = np.linalg.norm(h_tilde - F_OPT @ h_tilde) / np.linalg.norm(h_tilde)
     return nfpm
 
 
@@ -518,5 +528,140 @@ def nrank(A: np.ndarray, epsilon: float = np.finfo, normalized=False):
     """
     _, s, _ = np.linalg.svd(A)
     if normalized:
-        return np.sum(s / np.sum(s) > epsilon)
+        return np.sum(s / np.max(s) > epsilon)
     return np.sum(s > epsilon)
+
+
+def generateRandomRootSet(delta, rng=np.random.default_rng()):
+    points = Bridson_sampling(np.array([2, 1]), radius=delta, rng=rng)
+    points -= np.array([1, 0])
+    points = points[np.linalg.norm(points, axis=1) < 1, :]
+    return points[:, 0] + 1j * points[:, 1]
+
+
+def _selectRandomRoots(root_set: np.ndarray, L, M, rng=np.random.default_rng()):
+    index_set = np.arange(root_set.shape[0])
+    roots = []
+    assert (
+        len(index_set) >= M * L
+    ), "Not enough roots to choose from. Can't place enough roots with minimal distance {delta}!"
+    for m in range(M):
+        selection = rng.choice(index_set, L, False)
+        roots.append(np.concatenate([root_set[selection], root_set[selection].conj()]))
+        remainder = [i for i in index_set if i not in selection]
+        index_set = remainder
+
+    return np.asarray(roots)
+
+
+def generateRandomIRsFromRootset(root_set: np.ndarray, L, M, rng=np.random.default_rng()):
+    selected_roots = _selectRandomRoots(root_set, int(L / 2), M, rng=rng)
+    h = np.zeros((L, M))
+    hf = np.zeros((L, M), dtype=np.complex128)
+    for n in range(M):
+        h_ = np.poly(selected_roots[n, :])
+        # h_ = h_ / np.linalg.norm(h_) * a[n]
+        h[:, n, None] = h_[1:, None]
+        hf[:, n, None] = np.fft.fft(h_[1:, None], n=L, axis=0)
+    return h, hf
+
+
+from scipy.special import gammainc
+
+
+# Uniform sampling in a hyperspere
+# Based on Matlab implementation by Roger Stafford
+# Can be optimized for Bridson algorithm by excluding all points within the r/2 sphere
+def hypersphere_volume_sample(center, radius, k=1, rng=np.random.default_rng()):
+    ndim = center.size
+    x = rng.normal(size=(k, ndim))
+    ssq = np.sum(x**2, axis=1)
+    fr = radius * gammainc(ndim / 2, ssq / 2) ** (1 / ndim) / np.sqrt(ssq)
+    frtiled = np.tile(fr.reshape(k, 1), (1, ndim))
+    p = center + np.multiply(x, frtiled)
+    return p
+
+
+# Uniform sampling on the sphere's surface
+def hypersphere_surface_sample(center, radius, k=1, rng=np.random.default_rng()):
+    ndim = center.size
+    vec = rng.standard_normal(size=(k, ndim))
+    vec /= np.linalg.norm(vec, axis=1)[:, None]
+    p = center + np.multiply(vec, radius)
+    return p
+
+
+def squared_distance(p0, p1):
+    return np.sum(np.square(p0 - p1))
+
+
+def Bridson_sampling(
+    dims=np.array([1.0, 1.0]),
+    radius=0.05,
+    k=30,
+    hypersphere_sample=hypersphere_volume_sample,
+    rng=np.random.default_rng(),
+):
+    # References: Fast Poisson Disk Sampling in Arbitrary Dimensions
+    #             Robert Bridson, SIGGRAPH, 2007
+
+    ndim = dims.size
+
+    # size of the sphere from which the samples are drawn relative to the size of a disc (radius)
+    sample_factor = 2
+    if hypersphere_sample == hypersphere_volume_sample:
+        sample_factor = 2
+
+    # for the surface sampler, all new points are almost exactly 1 radius away from at least one existing sample
+    # eps to avoid rejection
+    if hypersphere_sample == hypersphere_surface_sample:
+        eps = 0.001
+        sample_factor = 1 + eps
+
+    def in_limits(p):
+        return np.all(np.zeros(ndim) <= p) and np.all(p < dims)
+
+    # Check if there are samples closer than "squared_radius" to the candidate "p"
+    def in_neighborhood(p, n=2):
+        indices = (p / cellsize).astype(int)
+        indmin = np.maximum(indices - n, np.zeros(ndim, dtype=int))
+        indmax = np.minimum(indices + n + 1, gridsize)
+
+        # Check if the center cell is empty
+        if not np.isnan(P[tuple(indices)][0]):
+            return True
+        a = []
+        for i in range(ndim):
+            a.append(slice(indmin[i], indmax[i]))
+        if np.any(np.sum(np.square(p - P[tuple(a)]), axis=ndim) < squared_radius):
+            return True
+
+    def add_point(p):
+        points.append(p)
+        indices = (p / cellsize).astype(int)
+        P[tuple(indices)] = p
+
+    cellsize = radius / np.sqrt(ndim)
+    gridsize = (np.ceil(dims / cellsize)).astype(int)
+
+    # Squared radius because we'll compare squared distance
+    squared_radius = radius * radius
+
+    # Positions of cells
+    P = np.empty(
+        np.append(gridsize, ndim), dtype=np.float32
+    )  # n-dim value for each grid cell
+    # Initialise empty cells with NaNs
+    P.fill(np.nan)
+
+    points = []
+    add_point(rng.uniform(np.zeros(ndim), dims))
+    while len(points):
+        i = rng.integers(len(points))
+        p = points[i]
+        del points[i]
+        Q = hypersphere_sample(np.array(p), radius * sample_factor, k, rng)
+        for q in Q:
+            if in_limits(q) and not in_neighborhood(q):
+                add_point(q)
+    return P[~np.isnan(P).any(axis=ndim)]
