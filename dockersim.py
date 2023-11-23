@@ -73,10 +73,13 @@ class DockerSim:
             del data["run_nr"]
             # result = self.func(rng=rng, **data)
             with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
-                result_writer.writerows(
-                    {"run_nr": run_nr, **data, "series": series, **values}
-                    for series, values in enumerate(self.func(rng=rng, **data))
-                )
+                try:
+                    result_writer.writerows(
+                        {"run_nr": run_nr, **data, "series": series, **values}
+                        for series, values in enumerate(self.func(rng=rng, **data))
+                    )
+                except:
+                    pass
 
     def run(
         self,
@@ -106,7 +109,8 @@ class DockerSim:
         for task in self.tasks:
             run_tasks += [{"run_nr": run, **task} for run in range(runs)]
         print(
-            f"Running {runs} realizations of {len(self.tasks)} tasks each (= {len(run_tasks)}) in {num_processes} processes."
+            f"Running {runs} realizations of {len(self.tasks)} tasks each\
+            (= {len(run_tasks)}) in {num_processes} processes."
         )
         with mp.Pool(processes=num_processes) as pool:
             with tqdm(
