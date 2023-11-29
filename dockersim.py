@@ -39,6 +39,7 @@ class DockerSim:
         return_value_names: Iterable[str],
         seed: int,
         datadir: str = ".",
+        file_suffix: str = "results",
     ) -> None:
         self.func = func
         self.tasks = tasks
@@ -46,10 +47,11 @@ class DockerSim:
         self.return_value_names = return_value_names
         self.seed = seed
         self.datadir = datadir
+        self.file_suffix = file_suffix
         pass
 
     def _workerProc(self, data):
-        file_name = f"{self.datadir}/results_{mp.current_process().name}.csv"
+        file_name = f"{self.datadir}/{self.file_suffix}_{mp.current_process().name}.csv"
         with open(file_name, mode="a+") as result_file:
             result_writer = csv.DictWriter(
                 result_file,
@@ -71,10 +73,13 @@ class DockerSim:
             del data["run_nr"]
             # result = self.func(rng=rng, **data)
             with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
-                result_writer.writerows(
-                    {"run_nr": run_nr, **data, "series": series, **values}
-                    for series, values in enumerate(self.func(rng=rng, **data))
-                )
+                try:
+                    result_writer.writerows(
+                        {"run_nr": run_nr, **data, "series": series, **values}
+                        for series, values in enumerate(self.func(rng=rng, **data))
+                    )
+                except:
+                    pass
 
     def run(
         self,
@@ -104,7 +109,8 @@ class DockerSim:
         for task in self.tasks:
             run_tasks += [{"run_nr": run, **task} for run in range(runs)]
         print(
-            f"Running {runs} realizations of {len(self.tasks)} tasks each (= {len(run_tasks)}) in {num_processes} processes."
+            f"Running {runs} realizations of {len(self.tasks)} tasks each\
+            (= {len(run_tasks)}) in {num_processes} processes."
         )
         with mp.Pool(processes=num_processes) as pool:
             with tqdm(
