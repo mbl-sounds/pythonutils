@@ -150,7 +150,7 @@ def set_size(width_pt, fraction=1, subplots=(1, 1), ratio=(5**0.5 - 1) / 2):
     return (fig_width_in, fig_height_in)
 
 
-def NPM(a, b) -> np.float64:
+def NPM(a: np.ndarray, b: np.ndarray) -> np.float64:
     """
     Computes the Normalized Projection Misalignment (NPM) for two vectors a and b.
 
@@ -232,7 +232,8 @@ def generateNonStationaryNoise(
     num_samples: int, fs: float, rng=np.random.default_rng()
 ) -> np.ndarray:
     """
-    Generates WGN with randomized segments of variance mimicking the envelope of speech (not that well though)
+    Generates WGN with randomized segments of variance mimicking the envelope of speech
+    (not that well though)
 
     Parameters
     ----------
@@ -341,7 +342,7 @@ def generateRandomIRs(
 #     return h, hf
 
 
-def getNoisySignal(
+def getNoisySignalOld(
     signal: np.ndarray,
     IRs: np.ndarray,
     SNR: np.float64,
@@ -372,7 +373,6 @@ def getNoisySignal(
     M = IRs.shape[1]
 
     var_s = np.var(signal)
-    # s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
 
     noisy_signal = np.zeros(shape=(N_s + L - 1, M))
     n_var = 10 ** (-SNR / 10) * var_s * np.linalg.norm(IRs) ** 2 / M
@@ -380,11 +380,92 @@ def getNoisySignal(
         noisy_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze()) + np.sqrt(
             n_var
         ) * rng.normal(size=(N_s + L - 1,))
-    # for k in range(N_s - L):
-    #     noisy_signal[k, :, None] = IRs.T @ s_[k : k + L][::-1] + np.sqrt(
-    #         n_var
-    #     ) * rng.normal(size=(N, 1))
     return noisy_signal
+
+
+def getNoisySignal(
+    signal: np.ndarray,
+    IRs: np.ndarray,
+    SNR: np.float64,
+    rng=np.random.default_rng(),
+    noise_cov: np.ndarray = None,
+) -> np.ndarray:
+    """
+    Convolves clean signal with IRs and adds noise at SNR.
+
+    Parameters
+    ----------
+    signal: np.ndarray
+            clean signal (single channel)
+    IRs: np.ndarray
+            LxM array containing IRs
+    a: Array-like
+            target norm values of IRs (must have N elements)
+    rng: Generator
+            The random generator to be used
+
+    Returns
+    -------
+    noisy_signal: np.ndarray
+            convolved and noisy signals
+    """
+    N_s = signal.shape[0]
+    L = IRs.shape[0]
+    M = IRs.shape[1]
+
+    noise_cov = np.eye(L) if noise_cov is None else noise_cov
+
+    # s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
+
+    convolved_signal = np.zeros(shape=(N_s + L - 1, M))
+    for m in range(M):
+        convolved_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze())
+
+    var_s = np.var(convolved_signal)
+    n_var = 10 ** (-SNR / 10) * var_s
+    noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
+    noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
+    noisy_signal = convolved_signal + noise
+    return noisy_signal, noise_cov
+
+
+def generateMCNoise(
+    n: int,
+    L: int,
+    M: int,
+    noise_cov: np.ndarray,
+    noise_mean: np.ndarray = None,
+    noise_dist: str = "normal",
+    rng=np.random.default_rng(),
+) -> np.ndarray:
+    assert noise_cov.shape == (L, L) or noise_cov.shape == (
+        M * L,
+        M * L,
+    ), f"The noise covariance has to be either (L, L)=({L}, {L}) or (M*L, M*L)=\
+        ({M*L}, {M*L})"
+    noise_mean = np.zeros((noise_cov.shape[0],)) if noise_mean == None else noise_mean
+    assert noise_mean.shape == (L,) or noise_mean.shape == (
+        M * L,
+    ), f"The noise mean has to be either (L, )=({L}, ) or (M*L, )=\
+        ({M*L}, )"
+    size = noise_cov.shape[0]
+    # noise = np.zeros((n, M))
+    samples = int(n / L) + 1
+    match noise_dist:
+        case "normal":
+            if size == L:
+                noise = rng.multivariate_normal(
+                    noise_mean, cov=noise_cov, size=(M, samples)
+                ).reshape((M, samples * L))
+            if size == M * L:
+                noise = []
+                noise_ = rng.multivariate_normal(
+                    noise_mean, cov=noise_cov, size=(samples,)
+                )
+                for m in range(M):
+                    noise.append(noise_[:, m * L : (m + 1) * L].reshape((samples * L,)))
+                noise = np.asarray(noise)
+    return noise[:, :n].T
 
 
 def discreteEntropy(x: np.ndarray, base: float = 2) -> float:
@@ -394,7 +475,8 @@ def discreteEntropy(x: np.ndarray, base: float = 2) -> float:
     Parameters
     ----------
     x: np.ndarray
-            array, of which the entropy should be computed. Rows are considered elements to test for uniqueness.
+            array, of which the entropy should be computed.
+            Rows are considered elements to test for uniqueness.
 
     Returns
     -------
