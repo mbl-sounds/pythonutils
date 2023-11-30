@@ -428,7 +428,7 @@ def getNoisySignal(
     noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
     noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
     noisy_signal = convolved_signal + noise
-    return noisy_signal, noise_cov
+    return noisy_signal, noise, noise_cov
 
 
 def generateMCNoise(
@@ -455,35 +455,22 @@ def generateMCNoise(
     samples = int(n / L) + 1
     match noise_dist:
         case "normal":
-            # Generate cases
-            noise_ = rng.multivariate_normal(noise_mean, noise_cov, samples).T
+            X = np.random.normal(size=(samples, L)).T
+            for nn in range(X.shape[0]):
+                X[nn] = X[nn] - X[nn].mean()
 
-            # Subtract the mean from each variable
-            for nn in range(noise_.shape[0]):
-                noise_[nn] = noise_[nn] - noise_[nn].mean()
-
-            # Make each variable in X orthogonal to one another
-            L_inv = np.linalg.cholesky(np.cov(noise_, bias=True))
+            L_inv = np.linalg.cholesky(np.cov(X))
             L_inv = np.linalg.inv(L_inv)
-            noise_ = np.dot(L_inv, noise_)
+            X = np.dot(L_inv, X)
 
-            # Rescale X to exactly match Sigma
             L_ = np.linalg.cholesky(noise_cov)
-            noise_ = np.dot(L_, noise_)
-
-            # Add the mean back into each variable
-            for nn in range(noise_.shape[0]):
-                noise_[nn] = noise_[nn] + noise_mean[nn]
-
-            # # The covariance of the generated data should match Sigma
-            # print(np.cov(X, bias = True))
+            X = np.dot(L_, X)
+            for nn in range(X.shape[0]):
+                X[nn] = X[nn] + noise_mean[nn]
             noise = []
             for m in range(M):
-                noise.append(noise_[m * L : (m + 1) * L, :].reshape((samples * L,)))
+                noise.append(X[m * L : (m + 1) * L, :].T.reshape((samples * L,)))
             noise = np.asarray(noise)
-        case _:
-            raise Exception(f"Unknown noise type '{noise_dist}'!")
-
     return noise[:, :n].T
 
 
