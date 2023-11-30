@@ -426,7 +426,7 @@ def getNoisySignal(
     noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
     noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
     noisy_signal = convolved_signal + noise
-    return noisy_signal, noise_cov
+    return noisy_signal, noise, noise_cov
 
 
 def generateMCNoise(
@@ -453,18 +453,22 @@ def generateMCNoise(
     samples = int(n / L) + 1
     match noise_dist:
         case "normal":
-            if size == L:
-                noise = rng.multivariate_normal(
-                    noise_mean, cov=noise_cov, size=(M, samples)
-                ).reshape((M, samples * L))
-            if size == M * L:
-                noise = []
-                noise_ = rng.multivariate_normal(
-                    noise_mean, cov=noise_cov, size=(samples,)
-                )
-                for m in range(M):
-                    noise.append(noise_[:, m * L : (m + 1) * L].reshape((samples * L,)))
-                noise = np.asarray(noise)
+            X = np.random.normal(size=(samples, L)).T
+            for nn in range(X.shape[0]):
+                X[nn] = X[nn] - X[nn].mean()
+
+            L_inv = np.linalg.cholesky(np.cov(X))
+            L_inv = np.linalg.inv(L_inv)
+            X = np.dot(L_inv, X)
+
+            L_ = np.linalg.cholesky(noise_cov)
+            X = np.dot(L_, X)
+            for nn in range(X.shape[0]):
+                X[nn] = X[nn] + noise_mean[nn]
+            noise = []
+            for m in range(M):
+                noise.append(X[m * L : (m + 1) * L, :].T.reshape((samples * L,)))
+            noise = np.asarray(noise)
     return noise[:, :n].T
 
 
