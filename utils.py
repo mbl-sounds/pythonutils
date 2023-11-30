@@ -50,7 +50,9 @@ def progressBar(
 
     # Progress Bar Printing Function
     def printProgressBar(iteration):
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+        percent = ("{0:." + str(decimals) + "f}").format(
+            100 * (iteration / float(total))
+        )
         filledLength = int(length * iteration // total)
         bar = fill * filledLength + "-" * (length - filledLength)
         print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd, flush=True)
@@ -377,9 +379,9 @@ def getNoisySignalOld(
     noisy_signal = np.zeros(shape=(N_s + L - 1, M))
     n_var = 10 ** (-SNR / 10) * var_s * np.linalg.norm(IRs) ** 2 / M
     for m in range(M):
-        noisy_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze()) + np.sqrt(
-            n_var
-        ) * rng.normal(size=(N_s + L - 1,))
+        noisy_signal[:, m] = np.convolve(
+            signal.squeeze(), IRs[:, m].squeeze()
+        ) + np.sqrt(n_var) * rng.normal(size=(N_s + L - 1,))
     return noisy_signal
 
 
@@ -438,33 +440,50 @@ def generateMCNoise(
     noise_dist: str = "normal",
     rng=np.random.default_rng(),
 ) -> np.ndarray:
-    assert noise_cov.shape == (L, L) or noise_cov.shape == (
+    assert noise_cov.shape == (
         M * L,
         M * L,
-    ), f"The noise covariance has to be either (L, L)=({L}, {L}) or (M*L, M*L)=\
+    ), f"The noise covariance has to be (M*L, M*L)=\
         ({M*L}, {M*L})"
     noise_mean = np.zeros((noise_cov.shape[0],)) if noise_mean == None else noise_mean
-    assert noise_mean.shape == (L,) or noise_mean.shape == (
+    assert noise_mean.shape == (
         M * L,
-    ), f"The noise mean has to be either (L, )=({L}, ) or (M*L, )=\
+    ), f"The noise mean has to be (M*L, )=\
         ({M*L}, )"
     size = noise_cov.shape[0]
     # noise = np.zeros((n, M))
     samples = int(n / L) + 1
     match noise_dist:
         case "normal":
-            if size == L:
-                noise = rng.multivariate_normal(
-                    noise_mean, cov=noise_cov, size=(M, samples)
-                ).reshape((M, samples * L))
-            if size == M * L:
-                noise = []
-                noise_ = rng.multivariate_normal(
-                    noise_mean, cov=noise_cov, size=(samples,)
-                )
-                for m in range(M):
-                    noise.append(noise_[:, m * L : (m + 1) * L].reshape((samples * L,)))
-                noise = np.asarray(noise)
+            # Generate cases
+            noise_ = rng.multivariate_normal(noise_mean, noise_cov, samples).T
+
+            # Subtract the mean from each variable
+            for nn in range(noise_.shape[0]):
+                noise_[nn] = noise_[nn] - noise_[nn].mean()
+
+            # Make each variable in X orthogonal to one another
+            L_inv = np.linalg.cholesky(np.cov(noise_, bias=True))
+            L_inv = np.linalg.inv(L_inv)
+            noise_ = np.dot(L_inv, noise_)
+
+            # Rescale X to exactly match Sigma
+            L_ = np.linalg.cholesky(noise_cov)
+            noise_ = np.dot(L_, noise_)
+
+            # Add the mean back into each variable
+            for nn in range(noise_.shape[0]):
+                noise_[nn] = noise_[nn] + noise_mean[nn]
+
+            # # The covariance of the generated data should match Sigma
+            # print(np.cov(X, bias = True))
+            noise = []
+            for m in range(M):
+                noise.append(noise_[m * L : (m + 1) * L, :].reshape((samples * L,)))
+            noise = np.asarray(noise)
+        case _:
+            raise Exception(f"Unknown noise type '{noise_dist}'!")
+
     return noise[:, :n].T
 
 
@@ -636,7 +655,9 @@ def _selectRandomRoots(root_set: np.ndarray, L, M, rng=np.random.default_rng()):
     return np.asarray(roots)
 
 
-def generateRandomIRsFromRootset(root_set: np.ndarray, L, M, rng=np.random.default_rng()):
+def generateRandomIRsFromRootset(
+    root_set: np.ndarray, L, M, rng=np.random.default_rng()
+):
     selected_roots = _selectRandomRoots(root_set, int(L / 2), M, rng=rng)
     h = np.zeros((L, M))
     hf = np.zeros((L, M), dtype=np.complex128)
