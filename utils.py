@@ -415,7 +415,7 @@ def getNoisySignal(
     L = IRs.shape[0]
     M = IRs.shape[1]
 
-    noise_cov = np.eye(L) if noise_cov is None else noise_cov
+    noise_cov = np.eye(M * L) if noise_cov is None else noise_cov
 
     # s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
 
@@ -426,8 +426,12 @@ def getNoisySignal(
     var_s = np.var(convolved_signal)
     n_var = 10 ** (-SNR / 10) * var_s
     noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
-    noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
-    noisy_signal = convolved_signal + noise
+    noise = None
+    if n_var > 0:
+        noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
+        noisy_signal = convolved_signal + noise
+    else:
+        noisy_signal = convolved_signal
     return noisy_signal, noise, noise_cov
 
 
