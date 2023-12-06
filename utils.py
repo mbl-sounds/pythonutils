@@ -50,9 +50,7 @@ def progressBar(
 
     # Progress Bar Printing Function
     def printProgressBar(iteration):
-        percent = ("{0:." + str(decimals) + "f}").format(
-            100 * (iteration / float(total))
-        )
+        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
         filledLength = int(length * iteration // total)
         bar = fill * filledLength + "-" * (length - filledLength)
         print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd, flush=True)
@@ -379,9 +377,9 @@ def getNoisySignalOld(
     noisy_signal = np.zeros(shape=(N_s + L - 1, M))
     n_var = 10 ** (-SNR / 10) * var_s * np.linalg.norm(IRs) ** 2 / M
     for m in range(M):
-        noisy_signal[:, m] = np.convolve(
-            signal.squeeze(), IRs[:, m].squeeze()
-        ) + np.sqrt(n_var) * rng.normal(size=(N_s + L - 1,))
+        noisy_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze()) + np.sqrt(
+            n_var
+        ) * rng.normal(size=(N_s + L - 1,))
     return noisy_signal
 
 
@@ -415,19 +413,22 @@ def getNoisySignal(
     L = IRs.shape[0]
     M = IRs.shape[1]
 
-    noise_cov = np.eye(L) if noise_cov is None else noise_cov
+    noise_cov = np.eye(M * L) if noise_cov is None else noise_cov
 
     # s_ = np.concatenate([np.zeros(shape=(L - 1, 1)), signal])
 
     convolved_signal = np.zeros(shape=(N_s + L - 1, M))
     for m in range(M):
         convolved_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze())
-
     var_s = np.var(convolved_signal)
     n_var = 10 ** (-SNR / 10) * var_s
-    noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
-    noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
-    noisy_signal = convolved_signal + noise
+    if n_var > 0:
+        noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
+        noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
+        noisy_signal = convolved_signal + noise
+    else:
+        noise = 0
+        noisy_signal = convolved_signal
     return noisy_signal, noise, noise_cov
 
 
@@ -455,7 +456,7 @@ def generateMCNoise(
     samples = int(n / L) + 1
     match noise_dist:
         case "normal":
-            X = np.random.normal(size=(samples, L)).T
+            X = np.random.normal(size=(samples, M * L)).T
             for nn in range(X.shape[0]):
                 X[nn] = X[nn] - X[nn].mean()
 
@@ -642,9 +643,7 @@ def _selectRandomRoots(root_set: np.ndarray, L, M, rng=np.random.default_rng()):
     return np.asarray(roots)
 
 
-def generateRandomIRsFromRootset(
-    root_set: np.ndarray, L, M, rng=np.random.default_rng()
-):
+def generateRandomIRsFromRootset(root_set: np.ndarray, L, M, rng=np.random.default_rng()):
     selected_roots = _selectRandomRoots(root_set, int(L / 2), M, rng=rng)
     h = np.zeros((L, M))
     hf = np.zeros((L, M), dtype=np.complex128)
