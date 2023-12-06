@@ -422,12 +422,12 @@ def getNoisySignal(
         convolved_signal[:, m] = np.convolve(signal.squeeze(), IRs[:, m].squeeze())
     var_s = np.var(convolved_signal)
     n_var = 10 ** (-SNR / 10) * var_s
+    noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
+    noise = None
     if n_var > 0:
-        noise_cov = noise_cov / np.linalg.norm(noise_cov) * n_var
         noise = generateMCNoise(N_s + L - 1, L, M, noise_cov=noise_cov, rng=rng)
         noisy_signal = convolved_signal + noise
     else:
-        noise = 0
         noisy_signal = convolved_signal
     return noisy_signal, noise, noise_cov
 
