@@ -475,6 +475,136 @@ def generateMCNoise(
     return noise[:, :n].T
 
 
+def conj_grad_EV(
+    A: np.ndarray,
+    epsilon: float = 1e-10,
+    max_iter: int = None,
+    precond: np.ndarray = None,
+    x_start: np.ndarray = None,
+    verbose=False,
+    return_error=False,
+):
+    x = np.random.normal(size=(A.shape[0], 1)) if x_start is None else x_start
+    # x = x / np.linalg.norm(x)
+    M = precond
+    mult = False
+    w = A @ x
+    l = (w.T @ x).squeeze()
+    g = w - l * x
+    if M is None:
+        p = g
+    else:
+        mult = M.shape == x.shape
+        p = M * g if mult else M @ g
+    z = A @ p
+
+    error = None
+    if return_error:
+        error = []
+
+    i = 0
+    while True:
+        a = (z.T @ x).squeeze()
+        b = (z.T @ p).squeeze()
+        c = (x.T @ p).squeeze()
+        d = (p.T @ p).squeeze()
+
+        delta = (l * d - b) ** 2 - 4 * (b * c - a * d) * (a - l * c)
+        alpha = (l * d - b + np.sqrt(delta)) / (2 * (b * c - a * d))
+        l = (l + a * alpha) / (1 + c * alpha)
+        gamma = np.sqrt(1 + 2 * c * alpha + d * alpha**2)
+
+        x = (x + alpha * p) / gamma
+        w = (w + alpha * z) / gamma
+        g = w - l * x
+
+        measure = np.linalg.norm(g) / l
+        if verbose:
+            print("Error:", measure)
+        if return_error:
+            error.append(measure)
+        if measure < epsilon or (max_iter is not None and i >= max_iter):
+            break
+
+        if M is None:
+            beta = -g.T @ z / b
+            p = g + beta * p
+        else:
+            beta = -g.T @ (M * z) / b if mult else -g.T @ M @ z / b
+            p = M * g + beta * p if mult else M @ g + beta * p
+
+        z = A @ p
+
+        i += 1
+
+    return x, error
+
+
+def conj_grad_GEV(
+    A: np.ndarray,
+    B: np.ndarray,
+    epsilon: float = 1e-10,
+    max_iter: int = None,
+    precond: np.ndarray = None,
+    x_start: np.ndarray = None,
+    verbose=False,
+    return_error=False,
+):
+    assert A.shape == B.shape, "A and B have to have the same size!"
+    x = np.random.normal(size=(A.shape[0], 1)) if x_start is None else x_start
+    x = x / np.linalg.norm(x)
+    M = precond
+    mult = False
+    w = A @ x
+    l = (w.T @ x).squeeze()
+    g = w - l * x
+    if M is None:
+        p = g
+    else:
+        mult = M.shape == x.shape
+        p = M * g if mult else M @ g
+    z = A @ p
+
+    error = None
+    if return_error:
+        error = []
+
+    i = 0
+    while True:
+        a = (z.T @ x).squeeze()
+        b = (z.T @ p).squeeze()
+        c = (x.T @ B @ p).squeeze()
+        d = (p.T @ B @ p).squeeze()
+
+        delta = (l * d - b) ** 2 - 4 * (b * c - a * d) * (a - l * c)
+        alpha = (l * d - b + np.sqrt(delta)) / (2 * (b * c - a * d))
+        l = (l + a * alpha) / (1 + c * alpha)
+        gamma = np.sqrt(1 + 2 * c * alpha + d * alpha**2)
+
+        x = (x + alpha * p) / gamma
+        w = (w + alpha * z) / gamma
+        g = A @ x - l * B @ x
+
+        measure = np.linalg.norm(g) / l
+        if verbose:
+            print("Error:", measure)
+        if return_error:
+            error.append(measure)
+        if measure < epsilon or (max_iter is not None and i >= max_iter):
+            break
+
+        if M is None:
+            beta = -g.T @ z / b
+            p = g + beta * p
+        else:
+            beta = -g.T @ (M * z) / b if mult else -g.T @ M @ z / b
+            p = M * g + beta * p if mult else M @ g + beta * p
+        z = A @ p
+        i += 1
+
+    return x, error
+
+
 def discreteEntropy(x: np.ndarray, base: float = 2) -> float:
     """
     Computes the discrete entropy -sum(pn*log2(pn))
